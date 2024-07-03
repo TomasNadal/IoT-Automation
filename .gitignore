@@ -1,0 +1,22 @@
+# Compiler files
+.pycache
+out/
+
+# Ignores development broadcast logs
+
+# Docs
+docs/
+generate_sample_entries.py
+
+# Node modules
+node_modules/
+
+# Dotenv file
+.env
+.venv
+.env
+.flaskenv
+db.py
+
+/partials
+*.pyc
