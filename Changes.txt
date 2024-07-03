@@ -1,0 +1,33 @@
+Changes in this commit:
+
+feat: Creation of structure of project:
+    IOT-AUTOMATION/
+    │
+    ├── flask_app/
+    │   ├── __init__.py
+    │   ├── models.py
+    │   └── config.py
+    │
+    ├── main.py
+    ├── .env
+    └── requirements.txt
+
+feat: Implement application factory pattern with environment-based configuration
+
+- **Configuration Management**: Created `config.py` to manage different configurations (development, testing, production) using environment variables loaded from a `.env` file.
+  - Defined a base `Config` class and specific configurations for development, testing, and production.
+  - Utilized `python-dotenv` to load environment variables, ensuring sensitive information is not hard-coded.
+
+- **Application Factory**: Updated `app/__init__.py` to follow the application factory pattern.
+  - Defined a `create_app` function to initialize the Flask application with the appropriate configuration.
+  - Initialized extensions (SQLAlchemy and JWTManager) within the factory function to avoid tight coupling and enhance flexibility.
+
+- **Entry Point**: Created `main.py` as the entry point to run the Flask application.
+  - Set up the `create_app` function to use the configuration specified by the `FLASK_CONFIG` environment variable.
+
+- **Project Structure**: Organized the project with a clear directory structure to separate configuration, application initialization, and runtime logic.
+
+
+
+feat: Implementation of models of the database and connection to TimescaleDB database.
+
