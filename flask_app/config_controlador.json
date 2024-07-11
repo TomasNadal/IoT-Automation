@@ -1,0 +1,32 @@
+{
+    "value_sensor1": {
+        "name": "Lleno",
+        "email": true,
+        "tipo": "NA"
+    },
+    "value_sensor2": {
+        "name": "Aceite",
+        "email": false,
+        "tipo": "NA"
+    },
+    "value_sensor3": {
+        "name": "Magnetotérmico",
+        "email": false,
+        "tipo": "NA"
+    },
+    "value_sensor4": {
+        "name": "Marcha",
+        "email": false,
+        "tipo": "NC"
+    },
+    "value_sensor5": {
+        "name": "Listo",
+        "email": false,
+        "tipo": "NA"
+    },
+    "value_sensor6": {
+        "name": "Temperatura",
+        "email": false,
+        "tipo": "NC"
+    }
+}
