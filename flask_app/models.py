@@ -20,6 +20,13 @@ class Empresa(db.Model):
     name = db.Column(db.Text, unique=True, nullable=False)
     controladores = db.relationship('Controlador', backref='empresa', lazy=True)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'controladores': [controlador.to_dict() for controlador in self.controladores]
+        }
+
 class Controlador(db.Model):
     __tablename__ = 'controlador'
     __table_args__ = {'schema': 'public'}
@@ -28,6 +35,15 @@ class Controlador(db.Model):
     id_empresa = db.Column(db.BigInteger, db.ForeignKey('public.empresa.id'), nullable=False)
     señales = db.relationship('Signal', backref='controlador', lazy=True)
     config = db.Column(JSONB)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'id_empresa': self.id_empresa,
+            'señales': [señal.to_dict() for señal in self.señales],
+            'config': self.config
+        }
 
 class Signal(db.Model):
     __tablename__ = 'signal'
@@ -46,6 +62,18 @@ class Signal(db.Model):
         {'schema': 'public'},
     )
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'tstamp': self.tstamp,
+            'value_sensor1': self.value_sensor1,
+            'value_sensor2': self.value_sensor2,
+            'value_sensor3': self.value_sensor3,
+            'value_sensor4': self.value_sensor4,
+            'value_sensor5': self.value_sensor5,
+            'value_sensor6': self.value_sensor6
+        }
+
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
     __table_args__ = {'schema': 'public'}
@@ -61,12 +89,29 @@ class User(db.Model, UserMixin):
     def is_active(self):
         return True
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'first_name': self.first_name,
+            'surname': self.surname,
+            'email': self.email,
+            'permisos': self.permisos,
+            'empresa_id': self.empresa_id
+        }
+
 class Aviso(db.Model):
     __tablename__ = 'avisos'
     __table_args__ = {'schema': 'public'}
     id = db.Column(db.BigInteger, primary_key=True)
     id_controlador = db.Column(db.BigInteger, db.ForeignKey('public.controlador.id'), nullable=False)
     config = db.Column(JSONB, nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'id_controlador': self.id_controlador,
+            'config': self.config
+        }
 
     def __repr__(self):
         return f'<Aviso {self.id} para controlador {self.id_controlador}>'
@@ -83,6 +128,19 @@ class SensorMetrics(db.Model):
     time_value_sensor4 = db.Column(db.Integer, default=0)
     time_value_sensor5 = db.Column(db.Integer, default=0)
     time_value_sensor6 = db.Column(db.Integer, default=0)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'controlador_id': self.controlador_id,
+            'connected_time_minutes': self.connected_time_minutes,
+            'time_value_sensor1': self.time_value_sensor1,
+            'time_value_sensor2': self.time_value_sensor2,
+            'time_value_sensor3': self.time_value_sensor3,
+            'time_value_sensor4': self.time_value_sensor4,
+            'time_value_sensor5': self.time_value_sensor5,
+            'time_value_sensor6': self.time_value_sensor6
+        }
 
     def __repr__(self):
         return f'<SensorMetrics for Controlador {self.controlador_id}>'

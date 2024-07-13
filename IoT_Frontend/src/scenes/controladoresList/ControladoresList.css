@@ -1,0 +1,90 @@
+/* Estilos generales para el contenedor y alineación */
+.sensor-container {
+    padding: 10px;  /* Espaciado dentro del contenedor */
+    border-radius: 5px;  /* Bordes redondeados */
+    margin-bottom: 10px;  /* Espacio debajo del contenedor */
+    display: inline-flex;  /* Alinea elementos en línea */
+    align-items: center;  /* Alinea elementos verticalmente */
+}
+
+.sensor-container img {
+    height: 25px;  /* Tamaño de las imágenes de sensores */
+    margin-right: 5px;  /* Espacio entre imágenes y otros elementos */
+}
+
+
+
+
+
+/* Clases dinámicas para los sensores */
+.sensor-container.on.tension { background-color: green; }
+.sensor-container.off.tension { background-color: red; } 
+.sensor-container.on.lleno { background-color: green; }
+.sensor-container.off.lleno { background-color: orange; }
+.sensor-container.on.aceite { background-color: green; }
+.sensor-container.off.aceite { background-color: orange; }
+.sensor-container.on.marcha { background-color: green; }
+.sensor-container.off.marcha { background-color: orange; }
+.sensor-container.on.magnetotérmico { background-color: green; }
+.sensor-container.off.magnetotérmico { background-color: red; }
+.sensor-container.on.temperatura { background-color: green; }
+.sensor-container.off.temperatura { background-color: red; }
+.sensor-container.on.listo { background-color: green; }
+.sensor-container.off.listo { background-color: red; }
+
+
+
+/* Estilo para detalles de sensores */
+.sensor-detail {
+    margin-top: 10px;  /* Espacio entre detalles */
+    border-radius: 2px;  /* Bordes redondeados */
+    color: #000000;  /* Texto en color negro */
+}
+
+.sensor-detail.on.orange {
+    background-color: orange;  /* Color para estado 'on' */
+}
+
+.sensor-detail.off.orange {
+    background-color: #c9c5c3;  /* Color para estado 'off' */
+}
+
+.sensor-detail.on.green {
+    background-color: green;
+}
+
+.sensor-detail.off.green {
+    background-color: red;
+}
+
+/* Estilos para contenedores de Arduino */
+.arduino-header {
+    display: flex;
+    align-items: center;  /* Alineación vertical */
+    justify-content: space-between;  /* Espacio entre elementos */
+}
+
+/* Ajustes para imágenes de estado */
+.status-image {
+    height: 24px;  /* Tamaño consistente para imágenes */
+    margin-right: 10px;  /* Espacio entre imágenes y otros elementos */
+}
+
+.sensor-status {
+    display: flex;
+    flex-wrap: wrap;  /* Permite envolver elementos */
+    justify-content: start;  /* Alineación hacia el principio */
+    gap: 20px;  /* Espacio entre elementos */
+}
+
+/* Ajustes para el ID del controlador */
+.controlador-id {
+    white-space: nowrap;  /* Evita que el texto se envuelva */
+    overflow: hidden;  /* Oculta el texto desbordado */
+    text-overflow: ellipsis;  /* Muestra puntos suspensivos en desbordamiento */
+}
+
+/* Estilos para transiciones y efectos visuales */
+.toggle-icon {
+    transition: transform 0.3s ease;  /* Efecto de transición suave */
+}

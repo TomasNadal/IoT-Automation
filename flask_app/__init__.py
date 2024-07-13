@@ -18,8 +18,10 @@ def create_app(config_name):
 
     # Import blueprints and models after initializing extensions
     from .api.arduino import arduino
+    from .api.dashboard import dashboard
 
     # Register blueprints
     app.register_blueprint(arduino, url_prefix='/api')
+    app.register_blueprint(dashboard, url_prefix='/dashboard')
       
     return app
