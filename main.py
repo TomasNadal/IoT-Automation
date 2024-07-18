@@ -1,8 +1,8 @@
-from flask_app import create_app
-from flask_cors import CORS, cross_origin  # Importa Flask-CORS
+from flask_app import create_app, socketio
+from flask_cors import CORS
 
 app = create_app('testing')
-CORS(app, supports_credentials=True)  # Permite solicitudes CORS desde cualquier origen
+CORS(app, supports_credentials=True)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    socketio.run(app, debug=True)

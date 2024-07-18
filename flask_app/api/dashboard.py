@@ -1,15 +1,11 @@
-
 from flask import Blueprint, jsonify
 from ..models import db, Empresa, Controlador, Signal
 from sqlalchemy.sql import func
-from sqlalchemy.orm import aliased
-from sqlalchemy import select
 from datetime import datetime, timedelta
 import pytz
 
 
 dashboard = Blueprint('dashboard', __name__)
-
 
 
 @dashboard.route('/empresa/<int:empresa_id>/dashboard', methods=['GET'])
@@ -48,7 +44,7 @@ def get_dashboard_data(empresa_id):
                 subquery, subquery.c.id == Controlador.id
             ).filter(
                 Controlador.id_empresa == empresa_id,
-                subquery.c.row_num <= 100
+                subquery.c.row_num <= 10
             ).all()
         )
 
@@ -67,13 +63,10 @@ def get_dashboard_data(empresa_id):
             }
 
             if controlador.id not in controladores_dict:
-                controladores_dict[controlador.id] = {
-                    'controlador': controlador.to_dict(),
-                    'signals': []
-                }
+                controladores_dict[controlador.id] = controlador.to_dict()
 
-            if signal_data['tstamp']:  # Avoid adding empty signal data
-                controladores_dict[controlador.id]['signals'].append(signal_data)
+                
+
 
         controladores_list = list(controladores_dict.values())
 

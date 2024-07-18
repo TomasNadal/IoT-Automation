@@ -1,9 +1,9 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
+from flask import Blueprint, request, jsonify
+from flask_socketio import emit
 from datetime import datetime, timedelta
 import pytz
 import os
-from ..models import Empresa, Controlador, Signal, User, Aviso, SensorMetrics, db
-from flask_login import login_required, current_user
+from ..models import Controlador, Signal, SensorMetrics, db
 import json
 
 arduino = Blueprint('arduino', __name__)
@@ -17,15 +17,6 @@ def load_config():
 
 # Load the configuration once at the start
 CONFIG_DATA = load_config()
-
-@arduino.route('/test', methods=['GET'])
-def test():
-    controladores = Controlador.query.all()
-    for controlador in controladores:
-        print(f"Controlador: {controlador.id}")
-        print(f"  - Conectado: {is_controlador_connected(controlador)}")
-    
-    return jsonify("OK"), 200
 
 @arduino.route('/data', methods=['POST'])
 def receive_data():
@@ -50,6 +41,14 @@ def receive_data():
             
             db.session.add(sensor_data)
             db.session.commit()
+
+        print("I AM GOING TO EMIT")
+        # Emit the new data to all connected WebSocket clients
+        emit('update_controladores', {
+            'controlador_id': controlador.id,
+            'new_signal': sensor_data.to_dict()
+        }, broadcast=True, namespace='/dashboard')
+        print("I EMITTED")
 
         return jsonify({'message': 'Datos recibidos correctamente'}), 200
     except ValueError as ve:

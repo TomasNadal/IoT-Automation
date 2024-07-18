@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { WebSocketProvider } from './WebSocketContext';
 
 // Create a context
 const DataContext = createContext();
@@ -14,8 +15,8 @@ const DataProvider = ({ children }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const responseDashboard = await axios.get('http://localhost:5000/dashboard/empresa/1/dashboard'); // Adjust the endpoint as necessary
-        const responseStats = await axios.get('http://localhost:5000/dashboard/empresa/1/connected_stats'); // Adjust the endpoint as necessary
+        const responseDashboard = await axios.get('http://localhost:5000/dashboard/empresa/1/dashboard');
+        const responseStats = await axios.get('http://localhost:5000/dashboard/empresa/1/connected_stats');
 
         const data = responseDashboard.data;
         const connectedStats = responseStats.data;
@@ -62,8 +63,10 @@ const DataProvider = ({ children }) => {
   };
 
   return (
-    <DataContext.Provider value={{ controladores, connectedStats, isDataLoading, errorData }}>
-      {children}
+    <DataContext.Provider value={{ controladores, connectedStats, isDataLoading, errorData, setControladores, setConnectedStats }}>
+      <WebSocketProvider>
+        {children}
+      </WebSocketProvider>
     </DataContext.Provider>
   );
 };
