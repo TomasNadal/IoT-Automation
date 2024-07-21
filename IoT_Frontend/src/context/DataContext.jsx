@@ -1,6 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
 import axios from 'axios';
-import { WebSocketProvider } from './WebSocketContext';
 
 // Create a context
 const DataContext = createContext();
@@ -17,36 +16,40 @@ const DataProvider = ({ children }) => {
       try {
         const responseDashboard = await axios.get('http://localhost:5000/dashboard/empresa/1/dashboard');
         const responseStats = await axios.get('http://localhost:5000/dashboard/empresa/1/connected_stats');
-
+  
         const data = responseDashboard.data;
         const connectedStats = responseStats.data;
+  
+        console.log('Fetched dashboard data:', data);
+        console.log('Fetched connected stats:', connectedStats);
+  
+        const processedControladores = data.map(controlador => {
+          
+          
+          const signals = controlador.señales;
+  
+          const updatedSignals = signals?.map(signal => updateSignalWithConfig(signal, controlador.config));
+          const lastSignal = updatedSignals?.length ? updatedSignals[updatedSignals.length - 1] : null;
 
-        // Process data to find last signal and image name for each controlador
-        const processedControladores = data.map(item => {
-          const controlador = item.controlador;
-          const signals = item.signals;
-
-          // Update signals and last_signal with config names
-          const updatedSignals = signals.map(signal => updateSignalWithConfig(signal, controlador.config));
-          const lastSignal = updatedSignals.length ? updatedSignals[0] : null;
-
+  
           return {
             ...controlador,
             señales: updatedSignals,
             last_signal: lastSignal
           };
         });
-
+  
         setControladores(processedControladores);
         setConnectedStats(connectedStats);
       } catch (error) {
         setErrorData(error);
+        console.error('Error fetching data:', error);
       } finally {
         setIsDataLoading(false);
       }
     };
-
-    fetchData(); // Fetch data once when the provider is mounted
+  
+    fetchData();
   }, []);
 
   const updateSignalWithConfig = (signal, config) => {
@@ -64,9 +67,7 @@ const DataProvider = ({ children }) => {
 
   return (
     <DataContext.Provider value={{ controladores, connectedStats, isDataLoading, errorData, setControladores, setConnectedStats }}>
-      <WebSocketProvider>
-        {children}
-      </WebSocketProvider>
+      {children}
     </DataContext.Provider>
   );
 };

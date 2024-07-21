@@ -4,6 +4,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 import random
+from datetime import datetime
 
 db = SQLAlchemy()
 
@@ -47,7 +48,10 @@ class Controlador(db.Model):
 
 class Signal(db.Model):
     __tablename__ = 'signal'
-    __table_args__ = {'schema': 'public'}
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', 'tstamp', name='signal_pk'),
+        {'schema': 'public'},
+    )
     id = db.Column(db.BigInteger, db.ForeignKey('public.controlador.id'), primary_key=True)
     tstamp = db.Column(TIMESTAMP, primary_key=True)
     value_sensor1 = db.Column(db.Boolean)
@@ -57,15 +61,10 @@ class Signal(db.Model):
     value_sensor5 = db.Column(db.Boolean)
     value_sensor6 = db.Column(db.Boolean)
 
-    __table_args__ = (
-        db.PrimaryKeyConstraint('id', 'tstamp', name='signal_pk'),
-        {'schema': 'public'},
-    )
-
     def to_dict(self):
         return {
             'id': self.id,
-            'tstamp': self.tstamp,
+            'tstamp': self.tstamp.isoformat() if isinstance(self.tstamp, datetime) else None,
             'value_sensor1': self.value_sensor1,
             'value_sensor2': self.value_sensor2,
             'value_sensor3': self.value_sensor3,
@@ -78,12 +77,13 @@ class User(db.Model, UserMixin):
     __tablename__ = 'user'
     __table_args__ = {'schema': 'public'}
     id = db.Column(db.BigInteger, primary_key=True, default=get_id)
+    username = db.Column(db.String(80), unique=True, nullable=False)
     first_name = db.Column(db.String(150))
     surname = db.Column(db.String(150))
-    email = db.Column(db.String(150), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(500), nullable=False)
-    permisos = db.Column(db.String(50))
-    empresa_id = db.Column(db.BigInteger, db.ForeignKey('public.empresa.id'))
+    empresa_id = db.Column(db.BigInteger, db.ForeignKey('public.empresa.id'), nullable=False)
+    permisos = db.Column(JSONB)
 
     @property
     def is_active(self):
@@ -144,3 +144,4 @@ class SensorMetrics(db.Model):
 
     def __repr__(self):
         return f'<SensorMetrics for Controlador {self.controlador_id}>'
+

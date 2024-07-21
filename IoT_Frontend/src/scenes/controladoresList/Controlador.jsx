@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import { Box, Typography, Collapse, IconButton, useTheme } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -16,7 +16,7 @@ const Controlador = ({ controlador }) => {
   };
 
   return (
-    <Box key={controlador.id} mb={2} p={2} bgcolor={colors.primary[400]} borderRadius="8px">
+    <Box mb={2} p={2} bgcolor={colors.primary[400]} borderRadius="8px">
       <Box display="flex" justifyContent="space-between" alignItems="center">
         <Typography variant="h3" color={colors.grey[100]}>
           <Link to="/config">{controlador.name}</Link>

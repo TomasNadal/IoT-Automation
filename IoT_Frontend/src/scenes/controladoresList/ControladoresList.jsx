@@ -1,17 +1,19 @@
 import React, { useContext } from 'react';
-import { Box } from '@mui/material';
 import { DataContext } from '../../context/DataContext';
-import Controlador from './Controlador'; // Ensure the correct import path
+import Controlador from './Controlador';
 
 const ControladoresList = () => {
   const { controladores } = useContext(DataContext);
 
+  // Log the controladores array to check the structure
+  console.log(controladores);
+
   return (
-    <Box>
+    <>
       {controladores.map((controlador) => (
         <Controlador key={controlador.id} controlador={controlador} />
       ))}
-    </Box>
+    </>
   );
 };
 

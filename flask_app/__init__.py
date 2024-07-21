@@ -3,7 +3,7 @@ from flask_socketio import SocketIO
 from .models import db
 from .config import config
 
-socketio = SocketIO(cors_allowed_origins="*")
+socketio = SocketIO(cors_allowed_origins="*",logger=True, engineio_logger=True)
 
 def create_app(config_name):
     app = Flask(__name__)
@@ -11,7 +11,7 @@ def create_app(config_name):
 
     # Initialize extensions with the app instance
     db.init_app(app)
-    socketio.init_app(app, cors_allowed_origins="http://localhost:5173")
+    socketio.init_app(app, cors_allowed_origins="*")
 
     # Register the teardown function
     @app.teardown_appcontext

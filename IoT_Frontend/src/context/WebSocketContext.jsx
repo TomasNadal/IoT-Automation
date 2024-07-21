@@ -1,68 +1,88 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useEffect, useContext, useRef } from 'react';
 import { DataContext } from './DataContext';
 import io from 'socket.io-client';
 
-// Create a context
+
 const WebSocketContext = createContext();
 
-// Create a provider component
 const WebSocketProvider = ({ children }) => {
   const { setControladores, setConnectedStats } = useContext(DataContext);
-  const [socket, setSocket] = useState(null);
+  const socketRef = useRef(null);
 
   useEffect(() => {
-    // Initialize WebSocket connection with reconnection options
+    if (socketRef.current) {
+      socketRef.current.close(); // Ensure any existing socket is closed
+    }
+
+    // Connect to the default namespace
     const newSocket = io('http://localhost:5000', {
+      transports: ['websocket', 'polling'], // Specify the transport protocols
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
     });
-    setSocket(newSocket);
 
-    // Handle connection event
+    socketRef.current = newSocket;
+
     newSocket.on('connect', () => {
       newSocket.emit('my_event', { data: 'I\'m connected!' });
-      console.log('WebSocket connected');
+      console.log('WebSocket connected to default namespace');
     });
 
-    // Handle disconnection event
     newSocket.on('disconnect', () => {
       console.log('WebSocket disconnected');
     });
 
-    // Handle connection error
     newSocket.on('connect_error', (error) => {
       console.error('WebSocket connection error:', error);
     });
 
-    // Handle incoming messages
     newSocket.on('update_controladores', data => {
+      console.log('Received new data for controladores:', data);
       setControladores(prevControladores => {
-        const controladorIndex = prevControladores.findIndex(c => c.id === data.id);
-        if (controladorIndex !== -1) {
-          // Update existing controlador
-          return prevControladores.map((controlador, index) =>
-            index === controladorIndex ? { ...controlador, ...data } : controlador
-          );
-        } else {
-          // Add new controlador
-          return [...prevControladores, data];
-        }
+        return prevControladores.map(controlador => {
+          if (controlador.id === data.controlador_id) {
+            const newSignal = updateSignalWithConfig(data.new_signal, controlador.config);
+            const updatedSeñales = [...controlador.señales, newSignal].slice(-100); // Keep last 100 signals
+            return {
+              ...controlador,
+              señales: updatedSeñales,
+              last_signal: newSignal
+            };
+          }
+          return controlador;
+        });
       });
     });
 
     newSocket.on('update_connected_stats', data => {
+      console.log('Received new data for connected stats:', data);
       setConnectedStats(data);
     });
 
-    // Clean up on unmount
+    const updateSignalWithConfig = (signal, config) => {
+      let updatedSignal = { ...signal };
+      for (let [key, value] of Object.entries(config)) {
+        const sensorName = value.name;
+        const sensorType = value.tipo === "NC";
+    
+        updatedSignal[sensorName] = updatedSignal[key];
+        delete updatedSignal[key];
+        updatedSignal[`${sensorName}_type`] = sensorType;
+      }
+      return updatedSignal;
+    };
+
     return () => {
-      newSocket.close();
+      if (newSocket) {
+        newSocket.close();
+        console.log('WebSocket closed');
+      }
     };
   }, [setControladores, setConnectedStats]);
 
   return (
-    <WebSocketContext.Provider value={{ socket }}>
+    <WebSocketContext.Provider value={{ socket: socketRef.current }}>
       {children}
     </WebSocketContext.Provider>
   );

@@ -1,10 +1,13 @@
 from flask import Blueprint, request, jsonify
+from flask import current_app
+from flask_socketio import SocketIO
 from flask_socketio import emit
 from datetime import datetime, timedelta
 import pytz
 import os
 from ..models import Controlador, Signal, SensorMetrics, db
 import json
+import logging
 
 arduino = Blueprint('arduino', __name__)
 
@@ -24,51 +27,40 @@ def receive_data():
         raw_data = request.data.decode('utf-8')
         unique_id, location, tiempo, sensor_states = parse_sensor_states(raw_data)
 
-        print(f"Datos recibidos: {unique_id}, {location}, {tiempo}, {sensor_states}")
+        logging.info(f"Datos recibidos: {unique_id}, {location}, {tiempo}, {sensor_states}")
 
         with db.session.begin():
             controlador = get_or_create_controlador(unique_id)
-            
+
             last_signal = Signal.query.filter_by(id=controlador.id).order_by(Signal.tstamp.desc()).first()
             if controlador.config is None:
                 controlador.config = CONFIG_DATA
-            
+
             config = controlador.config
             key_to_tipo = {key: value['tipo'] for key, value in config.items()}
-            
+
             sensor_data = add_sensor_data(controlador, sensor_states)
             update_sensor_metrics(controlador, sensor_data, last_signal, key_to_tipo)
-            
+
             db.session.add(sensor_data)
             db.session.commit()
 
-        print("I AM GOING TO EMIT")
+        logging.info("Emitting update to WebSocket clients")
+        # Get the SocketIO instance
+        socketio = current_app.extensions['socketio']
+        
         # Emit the new data to all connected WebSocket clients
-        emit('update_controladores', {
+        socketio.emit('update_controladores', {
             'controlador_id': controlador.id,
             'new_signal': sensor_data.to_dict()
-        }, broadcast=True, namespace='/dashboard')
-        print("I EMITTED")
+        }, namespace='/') # Add namespace if you're using one
 
         return jsonify({'message': 'Datos recibidos correctamente'}), 200
-    except ValueError as ve:
-        return jsonify({'error': str(ve)}), 400
+
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': f"Error al procesar los datos: {e}"}), 500
-
-def is_sensor_connected(tipo, sensor_reading):
-    if tipo == "NA":
-        return not sensor_reading
-    if tipo == "NC":
-        return sensor_reading
-    return False
-
-def is_controlador_connected(controlador):
-    last_sample = Signal.query.filter_by(id=controlador.id).order_by(Signal.tstamp.desc()).first()
-    if last_sample:
-        return last_sample.tstamp > datetime.now(pytz.timezone('Europe/Paris')) - timedelta(minutes=5)
-    return False
+        logging.error(f"Error processing data: {e}")
+        return jsonify({'message': 'Error processing data', 'error': str(e)}), 500
 
 def parse_sensor_states(raw_data):
     parts = raw_data.split(',')
@@ -80,9 +72,7 @@ def parse_sensor_states(raw_data):
     return unique_id, location, tiempo, sensor_states
 
 def get_or_create_controlador(unique_id):
-    print("Hola")
     controlador = Controlador.query.filter_by(id=unique_id).first()
-    print(controlador)
     if not controlador:
         raise ValueError("Controlador no registrado")
     return controlador
@@ -116,3 +106,16 @@ def update_sensor_metrics(controlador, sensor_data, last_signal, key_to_tipo):
                 sensor_time = getattr(sensor_metrics, f'time_{key}') + time_difference_minutes
                 setattr(sensor_metrics, f'time_{key}', sensor_time)
     return sensor_metrics
+
+def is_sensor_connected(tipo, sensor_reading):
+    if tipo == "NA":
+        return not sensor_reading
+    if tipo == "NC":
+        return sensor_reading
+    return False
+
+def is_controlador_connected(controlador):
+    last_sample = Signal.query.filter_by(id=controlador.id).order_by(Signal.tstamp.desc()).first()
+    if last_sample:
+        return last_sample.tstamp > datetime.now(pytz.timezone('Europe/Paris')) - timedelta(minutes=5)
+    return False
