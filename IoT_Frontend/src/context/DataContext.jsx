@@ -1,75 +1,69 @@
-import React, { createContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { createContext, useState, useCallback, useEffect } from 'react';
+import { useControladores } from '../hooks/useControladores';
 
-// Create a context
-const DataContext = createContext();
+export const DataContext = createContext();
 
-// Create a provider component
-const DataProvider = ({ children }) => {
-  const [controladores, setControladores] = useState([]);
-  const [connectedStats, setConnectedStats] = useState({ connected: 0, disconnected: 0 });
-  const [isDataLoading, setIsDataLoading] = useState(true);
-  const [errorData, setErrorData] = useState(null);
+const isControllerConnected = (controller) => {
+  if (!controller.last_signal) return false;
+  const lastSignalTime = new Date(controller.last_signal.tstamp).getTime();
+  const currentTime = new Date().getTime();
+  return (currentTime - lastSignalTime) < 5 * 60 * 1000; // 5 minutes in milliseconds
+};
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const responseDashboard = await axios.get('http://localhost:5000/dashboard/empresa/1/dashboard');
-        const responseStats = await axios.get('http://localhost:5000/dashboard/empresa/1/connected_stats');
-  
-        const data = responseDashboard.data;
-        const connectedStats = responseStats.data;
-  
-        console.log('Fetched dashboard data:', data);
-        console.log('Fetched connected stats:', connectedStats);
-  
-        const processedControladores = data.map(controlador => {
-          
-          
-          const signals = controlador.señales;
-  
-          const updatedSignals = signals?.map(signal => updateSignalWithConfig(signal, controlador.config));
-          const lastSignal = updatedSignals?.length ? updatedSignals[updatedSignals.length - 1] : null;
+export const DataProvider = ({ children }) => {
+  const { controladores: initialControladores, connectedStats: initialConnectedStats, isLoading, error, updateControlador: hookUpdateControlador } = useControladores();
+  const [localControladores, setLocalControladores] = useState([]);
+  const [localConnectedStats, setLocalConnectedStats] = useState({ connected: 0, disconnected: 0 });
 
-  
-          return {
-            ...controlador,
-            señales: updatedSignals,
-            last_signal: lastSignal
-          };
-        });
-  
-        setControladores(processedControladores);
-        setConnectedStats(connectedStats);
-      } catch (error) {
-        setErrorData(error);
-        console.error('Error fetching data:', error);
-      } finally {
-        setIsDataLoading(false);
-      }
-    };
-  
-    fetchData();
+  const updateConnectedStats = useCallback((controllers) => {
+    const connected = controllers.filter(isControllerConnected).length;
+    const disconnected = controllers.length - connected;
+    setLocalConnectedStats({ connected, disconnected });
   }, []);
 
-  const updateSignalWithConfig = (signal, config) => {
-    let updatedSignal = { ...signal };
-    for (let [key, value] of Object.entries(config)) {
-      const sensorName = value.name;
-      const sensorType = value.tipo === "NC";
-
-      updatedSignal[sensorName] = updatedSignal[key];
-      delete updatedSignal[key];
-      updatedSignal[`${sensorName}_type`] = sensorType;
+  useEffect(() => {
+    if (initialControladores.length > 0) {
+      setLocalControladores(initialControladores);
+      updateConnectedStats(initialControladores);
     }
-    return updatedSignal;
-  };
+  }, [initialControladores, updateConnectedStats]);
+
+  const updateControlador = useCallback((newData) => {
+    hookUpdateControlador(newData);
+    setLocalControladores((prevControladores) => {
+      const updatedControladores = prevControladores.map(controlador => {
+        if (controlador.id === newData.controlador_id) {
+          return {
+            ...controlador,
+            last_signal: newData.new_signal,
+          };
+        }
+        return controlador;
+      });
+
+      updateConnectedStats(updatedControladores);
+      return updatedControladores;
+    });
+  }, [hookUpdateControlador, updateConnectedStats]);
+
+  // Add this effect to periodically update connected stats
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      updateConnectedStats(localControladores);
+    }, 30000); // Update every 30 seconds
+
+    return () => clearInterval(intervalId);
+  }, [localControladores, updateConnectedStats]);
 
   return (
-    <DataContext.Provider value={{ controladores, connectedStats, isDataLoading, errorData, setControladores, setConnectedStats }}>
+    <DataContext.Provider value={{ 
+      controladores: localControladores, 
+      connectedStats: localConnectedStats, 
+      isLoading, 
+      error, 
+      updateControlador 
+    }}>
       {children}
     </DataContext.Provider>
   );
 };
-
-export { DataContext, DataProvider };

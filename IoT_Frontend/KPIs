@@ -1,0 +1,114 @@
+Certainly! Given the context of industrial press machines and container management, let's create a list of important KPIs and data points that would be valuable for your clients. We'll focus on information that can be extracted from time-series data and that would be crucial for operational efficiency and decision-making.
+
+Machine Utilization
+
+Total operating hours per day/week/month
+Percentage of time the machine is actively working vs. idle
+Peak operating hours
+
+
+Container Management
+
+Current fill level of containers
+Average time to fill a container
+Prediction of when a container will be full
+Number of container changes per day/week
+
+
+Efficiency Metrics
+
+Cycles per hour (number of press operations)
+Average cycle time
+Downtime analysis (reasons and duration)
+
+
+Maintenance Indicators
+
+Time since last maintenance
+Predicted time to next maintenance based on usage
+Number of error states or anomalies detected
+
+
+Production Metrics
+
+Total volume or weight processed
+Production rate (volume/weight per hour)
+Comparison of actual production vs. target
+
+
+Quality Control
+
+Error rate or number of defects detected
+Time spent in error states
+
+
+Energy Consumption
+
+Power usage over time
+Energy efficiency (production per unit of energy)
+
+
+Logistics Optimization
+
+Average wait time for container pickup
+Number of times production was halted due to full containers
+Optimal scheduling for truck drivers based on fill rates
+
+
+Safety Metrics
+
+Number of emergency stops
+Time spent in safety-critical states
+
+
+Comparative Analytics
+
+Performance comparison between different machines or sites
+Historical trends (day-over-day, week-over-week, etc.)
+
+
+Cost Analysis
+
+Operating cost per hour
+Cost per unit produced
+Labor efficiency (output per labor hour)
+
+
+Predictive Indicators
+
+Early warning signs for potential breakdowns
+Projected production capacity for upcoming periods
+
+
+
+For a POC, I would recommend focusing on the following key areas:
+
+Machine Utilization: This gives a clear picture of how effectively the machines are being used.
+Container Management: Critical for logistics and preventing production halts.
+Efficiency Metrics: Provides insight into the productivity of the operations.
+Maintenance Indicators: Helps in preventing unexpected downtime.
+Production Metrics: Offers a tangible measure of output.
+
+To implement these for your POC, you could create:
+
+A real-time dashboard showing current machine status, container fill levels, and daily production totals.
+A daily/weekly report summarizing machine utilization, efficiency, and production metrics.
+Alerts for when containers are nearing capacity or when maintenance is due.
+A simple predictive model for container fill times and potential maintenance needs.
+Comparative charts showing performance across different time periods or between different machines.
+
+These features would demonstrate the value of your system in improving operational efficiency, reducing downtime, and optimizing logistics for your clients.CREATE TABLE public.database_connection_logs (
+    id BIGSERIAL PRIMARY KEY,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    process_id INTEGER,
+    application_name VARCHAR(255),
+    database_name VARCHAR(255),
+    user_name VARCHAR(255),
+    client_addr VARCHAR(255),
+    backend_start TIMESTAMP WITH TIME ZONE,
+    query TEXT,
+    state VARCHAR(50),
+    function_name VARCHAR(255),
+    file_name VARCHAR(255),
+    line_number INTEGER
+);

@@ -1,2 +1,0 @@
-https://blog.miguelgrinberg.com/category/React/page/2
-https://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-xxiii-application-programming-interfaces-apis

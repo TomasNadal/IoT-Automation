@@ -25,7 +25,7 @@ def send_data(num_arduinos, interval):
             # Send the data via POST request
             response = requests.post(BASE_URL, data=data, headers=HEADERS)
             print(response.status_code)  # HTTP status code
-            print(f'post_request.text: {response.text}  {data}')
+            print(f'post_request.text: {response.text}  {data}')    
             
             # Wait for the specified interval before sending the next Arduino's data
             time.sleep(interval)

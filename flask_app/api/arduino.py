@@ -1,11 +1,10 @@
-from flask import Blueprint, request, jsonify
-from flask import current_app
-from flask_socketio import SocketIO
+from flask import Blueprint, request, jsonify, current_app, g
 from flask_socketio import emit
 from datetime import datetime, timedelta
 import pytz
 import os
 from ..models import Controlador, Signal, SensorMetrics, db
+from ..db_utils import db_connection_logger
 import json
 import logging
 
@@ -29,10 +28,10 @@ def receive_data():
 
         logging.info(f"Datos recibidos: {unique_id}, {location}, {tiempo}, {sensor_states}")
 
-        with db.session.begin():
-            controlador = get_or_create_controlador(unique_id)
+        with db_connection_logger(is_transaction=True) as session:
+            controlador = get_or_create_controlador(session, unique_id)
 
-            last_signal = Signal.query.filter_by(id=controlador.id).order_by(Signal.tstamp.desc()).first()
+            last_signal = session.query(Signal).filter_by(id=controlador.id).order_by(Signal.tstamp.desc()).first()
             if controlador.config is None:
                 controlador.config = CONFIG_DATA
 
@@ -40,10 +39,10 @@ def receive_data():
             key_to_tipo = {key: value['tipo'] for key, value in config.items()}
 
             sensor_data = add_sensor_data(controlador, sensor_states)
-            update_sensor_metrics(controlador, sensor_data, last_signal, key_to_tipo)
+            update_sensor_metrics(session, controlador, sensor_data, last_signal, key_to_tipo)
 
-            db.session.add(sensor_data)
-            db.session.commit()
+            session.add(sensor_data)
+            session.commit()
 
         logging.info("Emitting update to WebSocket clients")
         # Get the SocketIO instance
@@ -58,7 +57,6 @@ def receive_data():
         return jsonify({'message': 'Datos recibidos correctamente'}), 200
 
     except Exception as e:
-        db.session.rollback()
         logging.error(f"Error processing data: {e}")
         return jsonify({'message': 'Error processing data', 'error': str(e)}), 500
 
@@ -71,8 +69,8 @@ def parse_sensor_states(raw_data):
     sensor_states = [state == '1' for state in sensor_states]
     return unique_id, location, tiempo, sensor_states
 
-def get_or_create_controlador(unique_id):
-    controlador = Controlador.query.filter_by(id=unique_id).first()
+def get_or_create_controlador(session, unique_id):
+    controlador = session.query(Controlador).filter_by(id=unique_id).first()
     if not controlador:
         raise ValueError("Controlador no registrado")
     return controlador
@@ -90,11 +88,11 @@ def add_sensor_data(controlador, sensor_states):
     )
     return sensor_data
 
-def update_sensor_metrics(controlador, sensor_data, last_signal, key_to_tipo):
-    sensor_metrics = SensorMetrics.query.filter_by(controlador_id=controlador.id).first()
+def update_sensor_metrics(session, controlador, sensor_data, last_signal, key_to_tipo):
+    sensor_metrics = session.query(SensorMetrics).filter_by(controlador_id=controlador.id).first()
     if not sensor_metrics:
         sensor_metrics = SensorMetrics(controlador_id=controlador.id)
-        db.session.add(sensor_metrics)
+        session.add(sensor_metrics)
 
     for key, tipo in key_to_tipo.items():
         value = getattr(sensor_data, key)
@@ -115,7 +113,8 @@ def is_sensor_connected(tipo, sensor_reading):
     return False
 
 def is_controlador_connected(controlador):
-    last_sample = Signal.query.filter_by(id=controlador.id).order_by(Signal.tstamp.desc()).first()
-    if last_sample:
-        return last_sample.tstamp > datetime.now(pytz.timezone('Europe/Paris')) - timedelta(minutes=5)
+    with db_connection_logger(is_transaction=True) as session:
+        last_sample = session.query(Signal).filter_by(id=controlador.id).order_by(Signal.tstamp.desc()).first()
+        if last_sample:
+            return last_sample.tstamp > datetime.now(pytz.timezone('Europe/Paris')) - timedelta(minutes=5)
     return False

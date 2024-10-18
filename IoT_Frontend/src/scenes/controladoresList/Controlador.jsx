@@ -1,38 +1,69 @@
-import React, { useState } from 'react';
-import { Box, Typography, Collapse, IconButton, useTheme } from '@mui/material';
+import React, { useState, useMemo } from 'react';
+import { Box, Typography, Collapse, IconButton, useTheme, Grid } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { Link } from "react-router-dom";
 import { tokens } from '../../theme';
-import './ControladoresList.css';  // Or a separate CSS file if needed
+import './ControladoresList.css';
+
+const isControllerConnected = (controller) => {
+  if (!controller.last_signal) return false;
+  
+  const lastSignalTime = new Date(controller.last_signal.tstamp);
+  const currentTime = new Date();
+
+  console.log('Last signal time (UTC):', lastSignalTime.toUTCString());
+  console.log('Current time (local):', currentTime.toString());
+  console.log('Current time (UTC):', currentTime.toUTCString());
+
+  // Calculate the time difference correctly
+  const timeDifference = currentTime.getTime() - lastSignalTime.getTime();
+  console.log('Time difference (ms):', timeDifference);
+
+  const isConnected = timeDifference < 5 * 60 * 1000;
+  console.log('Is connected:', isConnected);
+
+  return isConnected;
+};
 
 const Controlador = ({ controlador }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
-  const [expandedControlador, setExpandedControlador] = useState(null);
+  const [expanded, setExpanded] = useState(false);
 
-  const toggleExpansion = (id) => {
-    setExpandedControlador((prevId) => (prevId === id ? null : id));
-  };
+  const toggleExpansion = () => setExpanded(!expanded);
+
+  // Use useMemo to calculate the connection status
+  const isConnected = useMemo(() => isControllerConnected(controlador), [controlador]);
+
+  // Force re-render every minute to update connection status
+  const [, setForceUpdate] = useState(0);
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setForceUpdate(prev => prev + 1);
+    }, 60000); // Every minute
+
+    return () => clearInterval(timer);
+  }, []);
 
   return (
     <Box mb={2} p={2} bgcolor={colors.primary[400]} borderRadius="8px">
-      <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Typography variant="h3" color={colors.grey[100]}>
-          <Link to="/config">{controlador.name}</Link>
-        </Typography>
-        <Box display="flex">
-          <div className={`sensor-container tension ${controlador.connected ? 'on' : 'off'}`}>
-            <img
-              src={controlador.connected
-                ? '/images/sensors/tension.png'
-                : '/images/sensors/notension.png'}
-              alt="Conectado"
-              style={{ height: '25px' }}
-            />
-          </div>
-          {controlador.last_signal ? (
-            Object.entries(controlador.config).map(([key, config]) => {
+      <Grid container alignItems="center" spacing={2}>
+        <Grid item xs={3}>
+          <Typography variant="h6" color={colors.grey[100]}>
+            <Link to="/config" style={{ color: 'inherit', textDecoration: 'none' }}>{controlador.name}</Link>
+          </Typography>
+        </Grid>
+        <Grid item xs={7}>
+          <Box display="flex" justifyContent="flex-start">
+            <div className={`sensor-container tension ${isConnected ? 'on' : 'off'}`}>
+              <img
+                src={isConnected ? '/images/sensors/tension.png' : '/images/sensors/notension.png'}
+                alt="Conectado"
+                style={{ height: '25px' }}
+              />
+            </div>
+            {controlador.last_signal && Object.entries(controlador.config).map(([key, config]) => {
               const sensorName = config.name;
               const sensorValue = controlador.last_signal[sensorName];
               const sensorType = controlador.last_signal[`${sensorName}_type`];
@@ -40,7 +71,10 @@ const Controlador = ({ controlador }) => {
               const image_name = sensorName.toLowerCase().replace(/\s+/g, '');
 
               return (
-                <div className={`sensor-container ${sensorValue !== undefined ? (sensorType === 'NA' ? (sensorValue === true ? `on ${colorClass}` : `off ${colorClass}`) : (sensorValue === false ? `on ${colorClass}` : `off ${colorClass}`)) : 'no tension'} ${colorClass}`} key={key}>
+                <div 
+                  key={key} 
+                  className={`sensor-container ${sensorValue !== undefined ? (sensorType === 'NA' ? (sensorValue === true ? `on ${colorClass}` : `off ${colorClass}`) : (sensorValue === false ? `on ${colorClass}` : `off ${colorClass}`)) : 'no tension'} ${colorClass}`}
+                >
                   <img
                     src={`/images/sensors/${image_name}.png`}
                     alt={sensorName}
@@ -48,28 +82,25 @@ const Controlador = ({ controlador }) => {
                   />
                 </div>
               );
-            })
-          ) : (
-            <Typography variant="body2" color="red">
-              No hay última señal disponible.
-            </Typography>
-          )}
-          <div className={`sensor-container`}>
-            {/*<SensorTimeCounter controladorId={controlador.id} sensorName={'Marcha'} />*/}
-          </div>
-        </Box>
-        <IconButton onClick={() => toggleExpansion(controlador.id)}>
-          {expandedControlador === controlador.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-        </IconButton>
-      </Box>
-      <Collapse in={expandedControlador === controlador.id}>
-        <Typography variant="body1" color={colors.grey[100]}>
-          Información adicional sobre el controlador.
+            })}
+          </Box>
+        </Grid>
+        <Grid item xs={2}>
+          <IconButton onClick={toggleExpansion}>
+            {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          </IconButton>
+        </Grid>
+      </Grid>
+      <Collapse in={expanded}>
+        <Typography variant="body2" color={colors.grey[100]} mt={2}>
+          Last signal: {controlador.last_signal ? new Date(controlador.last_signal.tstamp).toLocaleString() : 'N/A'}
         </Typography>
-
+        <Typography variant="body2" color={isConnected ? colors.greenAccent[500] : colors.redAccent[500]} mt={1}>
+          Status: {isConnected ? 'Connected' : 'Disconnected'}
+        </Typography>
       </Collapse>
     </Box>
   );
 };
 
-export default Controlador;
+export default React.memo(Controlador);
