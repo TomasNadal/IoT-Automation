@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from ..models import Signal, SensorMetrics
 
 def parse_sensor_states(raw_data):
@@ -11,16 +11,19 @@ def parse_sensor_states(raw_data):
     return unique_id, location, tiempo, sensor_states
 
 def add_sensor_data(controlador, sensor_states):
-    return Signal(
-        tstamp=datetime.now(),
-        id=controlador.id,
-        value_sensor1=sensor_states[0],
-        value_sensor2=sensor_states[1],
-        value_sensor3=sensor_states[2],
-        value_sensor4=sensor_states[3],
-        value_sensor5=sensor_states[4],
-        value_sensor6=sensor_states[5]
+    server_timestamp = datetime.now(timezone.utc)
+
+    new_signal = Signal(
+        controlador_id=controlador.id,
+        tstamp=server_timestamp,
+        value_sensor1=sensor_states.get('value_sensor1', False),
+        value_sensor2=sensor_states.get('value_sensor2', False),
+        value_sensor3=sensor_states.get('value_sensor3', False),
+        value_sensor4=sensor_states.get('value_sensor4', False),
+        value_sensor5=sensor_states.get('value_sensor5', False),
+        value_sensor6=sensor_states.get('value_sensor6', False)
     )
+    return new_signal
 
 def update_sensor_metrics(session, controlador, sensor_data, last_signal, key_to_tipo):
     sensor_metrics = session.query(SensorMetrics).filter_by(controlador_id=controlador.id).first()

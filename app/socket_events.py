@@ -1,38 +1,20 @@
-from threading import Lock
-from flask import Flask, session, request
-from flask_socketio import SocketIO, emit, join_room, leave_room, close_room, rooms, disconnect
+from flask import session, request
+from flask_socketio import emit, join_room, leave_room, close_room, rooms, disconnect
 import logging
+from .extensions import socketio
+from threading import Lock
 
-# Set up logging
-logging.basicConfig(level=logging.DEBUG)
-
-async_mode = None
-
-app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secret!'
-socketio = SocketIO(app, async_mode=async_mode, cors_allowed_origins="http://localhost:5173")
-thread = None
-thread_lock = Lock()
-
-def background_thread():
-    """Example of how to send server generated events to clients."""
-    count = 0
-    while True:
-        socketio.sleep(10)
-        count += 1
-        socketio.emit('my_response', {'data': 'Server generated event', 'count': count})
 
 @socketio.on('connect')
 def handle_connect():
-    global thread
-    with thread_lock:
-        if thread is None:
-            thread = socketio.start_background_task(background_thread)
-    emit('my_response', {'data': 'Connected', 'count': 0})
+    logging.info(f"Client connected: {request.sid}")
+    logging.info(f"Transport: {request.namespace.transport.name}")
+    logging.info(f"Total clients: {len(socketio.server.eio.sockets)}")
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    print('Client disconnected', request.sid)
+    logging.info(f"Client disconnected: {request.sid}")
+ 
 
 @socketio.on('my_event')
 def handle_my_event(message):
@@ -81,6 +63,3 @@ def handle_my_ping():
 def handle_update_controladores(data):
     print('Emitting update_controladores event with data:', data)
     socketio.emit('update_controladores', data, broadcast=True)
-
-if __name__ == '__main__':
-    socketio.run(app, debug=True)

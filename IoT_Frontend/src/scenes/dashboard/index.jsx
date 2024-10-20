@@ -46,7 +46,6 @@ const EnhancedDashboardOverview = () => {
 
   const stats = useMemo(() => calculateStats(), [calculateStats]);
 
-  console.log('Current stats:', stats);
 
   return (
     <Box m="20px">

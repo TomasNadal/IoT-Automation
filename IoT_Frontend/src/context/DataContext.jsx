@@ -29,24 +29,27 @@ export const DataProvider = ({ children }) => {
   }, [initialControladores, updateConnectedStats]);
 
   const updateControlador = useCallback((newData) => {
+    console.log('Updating controlador with new data:', newData);
     hookUpdateControlador(newData);
     setLocalControladores((prevControladores) => {
       const updatedControladores = prevControladores.map(controlador => {
         if (controlador.id === newData.controlador_id) {
+          console.log('Updating controlador:', controlador.id);
           return {
             ...controlador,
             last_signal: newData.new_signal,
+            señales: [newData.new_signal, ...controlador.señales.slice(0, 99)] // Keep last 100 signals
           };
         }
         return controlador;
       });
 
+      console.log('Updated controladores:', updatedControladores);
       updateConnectedStats(updatedControladores);
       return updatedControladores;
     });
   }, [hookUpdateControlador, updateConnectedStats]);
 
-  // Add this effect to periodically update connected stats
   useEffect(() => {
     const intervalId = setInterval(() => {
       updateConnectedStats(localControladores);

@@ -12,18 +12,8 @@ const isControllerConnected = (controller) => {
   const lastSignalTime = new Date(controller.last_signal.tstamp);
   const currentTime = new Date();
 
-  console.log('Last signal time (UTC):', lastSignalTime.toUTCString());
-  console.log('Current time (local):', currentTime.toString());
-  console.log('Current time (UTC):', currentTime.toUTCString());
-
-  // Calculate the time difference correctly
   const timeDifference = currentTime.getTime() - lastSignalTime.getTime();
-  console.log('Time difference (ms):', timeDifference);
-
-  const isConnected = timeDifference < 5 * 60 * 1000;
-  console.log('Is connected:', isConnected);
-
-  return isConnected;
+  return timeDifference < 5 * 60 * 1000;
 };
 
 const Controlador = ({ controlador }) => {
@@ -33,25 +23,35 @@ const Controlador = ({ controlador }) => {
 
   const toggleExpansion = () => setExpanded(!expanded);
 
-  // Use useMemo to calculate the connection status
   const isConnected = useMemo(() => isControllerConnected(controlador), [controlador]);
 
-  // Force re-render every minute to update connection status
   const [, setForceUpdate] = useState(0);
   React.useEffect(() => {
     const timer = setInterval(() => {
       setForceUpdate(prev => prev + 1);
-    }, 60000); // Every minute
+    }, 60000);
 
     return () => clearInterval(timer);
   }, []);
+
+  const getSensorClassName = (sensorName, sensorValue, sensorType, isConnected) => {
+    const baseClass = 'sensor-container';
+    const colorClass = sensorName.toLowerCase().replace(/\s+/g, '');
+    
+    if (!isConnected) return `${baseClass} no-tension ${colorClass}`;
+    
+    if (sensorValue === undefined) return `${baseClass} no-tension ${colorClass}`;
+    
+    const isOn = sensorType === 'NA' ? sensorValue : !sensorValue;
+    return `${baseClass} ${isOn ? 'on' : 'off'} ${colorClass}`;
+  };
 
   return (
     <Box mb={2} p={2} bgcolor={colors.primary[400]} borderRadius="8px">
       <Grid container alignItems="center" spacing={2}>
         <Grid item xs={3}>
           <Typography variant="h6" color={colors.grey[100]}>
-            <Link to="/config" style={{ color: 'inherit', textDecoration: 'none' }}>{controlador.name}</Link>
+            <Link to={`/controller/${controlador.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{controlador.name}</Link>
           </Typography>
         </Grid>
         <Grid item xs={7}>
@@ -63,20 +63,21 @@ const Controlador = ({ controlador }) => {
                 style={{ height: '25px' }}
               />
             </div>
-            {controlador.last_signal && Object.entries(controlador.config).map(([key, config]) => {
+            {Object.entries(controlador.config).map(([key, config]) => {
               const sensorName = config.name;
-              const sensorValue = controlador.last_signal[sensorName];
-              const sensorType = controlador.last_signal[`${sensorName}_type`];
-              const colorClass = sensorName.toLowerCase().replace(/\s+/g, '');
-              const image_name = sensorName.toLowerCase().replace(/\s+/g, '');
+              const sensorValue = isConnected ? controlador.last_signal?.[key] : undefined;
+              const sensorType = config.tipo;
+              const imageName = sensorName.toLowerCase().replace(/\s+/g, '');
+
+              console.log(`Sensor ${sensorName}:`, { value: sensorValue, type: sensorType, connected: isConnected });
 
               return (
                 <div 
                   key={key} 
-                  className={`sensor-container ${sensorValue !== undefined ? (sensorType === 'NA' ? (sensorValue === true ? `on ${colorClass}` : `off ${colorClass}`) : (sensorValue === false ? `on ${colorClass}` : `off ${colorClass}`)) : 'no tension'} ${colorClass}`}
+                  className={getSensorClassName(sensorName, sensorValue, sensorType, isConnected)}
                 >
                   <img
-                    src={`/images/sensors/${image_name}.png`}
+                    src={`/images/sensors/${imageName}.png`}
                     alt={sensorName}
                     style={{ height: '25px' }}
                   />

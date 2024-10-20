@@ -1,40 +1,24 @@
-// src/scenes/testScene.jsx
+import React, { useContext } from 'react';
+import { DataContext } from '../../context/DataContext';
 
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-import { Box, Typography, CircularProgress } from "@mui/material";
-
-const TestScene = () => {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axios.get("https://api.example.com/data"); // Replace with your API endpoint
-        setData(response.data);
-        setLoading(false);
-      } catch (err) {
-        setError(err);
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  if (loading) return <CircularProgress />;
-  if (error) return <Typography>Error: {error.message}</Typography>;
+const TestComponent = () => {
+  const { controladores, connectedStats } = useContext(DataContext);
 
   return (
-    <Box m="20px">
-      <Typography variant="h4" gutterBottom>
-        API Data
-      </Typography>
-      <pre>{JSON.stringify(data, null, 2)}</pre>
-    </Box>
+    <div>
+      <h2>Connected Stats</h2>
+      <p>Connected: {connectedStats.connected}</p>
+      <p>Disconnected: {connectedStats.disconnected}</p>
+      <h2>Controladores</h2>
+      {controladores.map(controlador => (
+        <div key={controlador.id}>
+          <h3>{controlador.name}</h3>
+          <p>Last Signal: {controlador.last_signal ? new Date(controlador.last_signal.tstamp).toLocaleString() : 'N/A'}</p>
+          <p>Señales Count: {controlador.señales.length}</p>
+        </div>
+      ))}
+    </div>
   );
 };
 
-export default TestScene;
+export default TestComponent;

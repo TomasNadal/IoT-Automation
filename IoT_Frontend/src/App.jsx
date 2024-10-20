@@ -10,6 +10,7 @@ import { WebSocketProvider } from "./context/WebSocketContext";
 import { QueryClient, QueryClientProvider } from "react-query";
 import { ReactQueryDevtools } from 'react-query/devtools'
 import ControllerDetail from "./scenes/controllerDetail/ControllerDetail";
+import TestComponent from "./scenes/testScene/testScene";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,9 @@ function App() {
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/controller/:id" element={<ControllerDetail />} />
+                    
+
+                    <Route path="/test" element = {<TestComponent/>} /> 
                     {/* Add more routes here */}
                   </Routes>
                 </main>
