@@ -4,7 +4,7 @@ from datetime import datetime
 import requests
 
 
-BASE_URL = 'http://localhost:5000/api/data'
+BASE_URL = 'http://localhost:5001/api/data'
 HEADERS = {'Content-Type': 'text/plain'}
 NUM_ARDUINOS = 10  # Number of Arduinos to simulate
 INTERVAL = 3  # Interval between messages for each Arduino in seconds
@@ -13,8 +13,8 @@ INTERVAL = 3  # Interval between messages for each Arduino in seconds
 def send_data(num_arduinos, interval):
     while True:
         for i in range(1, num_arduinos + 1):
-            controlador_id = i
-            location = f'Location_{controlador_id}'
+            controlador_id = "+34087079290"
+            location = f'Location'
             timestamp = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
             sensor_states = [random.choice([0, 1]) for _ in range(6)]
             

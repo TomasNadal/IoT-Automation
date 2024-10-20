@@ -1,8 +1,8 @@
 import sys
 import os
 from flask import json
-from flask_app import create_app
-from flask_app.models import db
+from app import create_app
+from app.models import db
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 import time

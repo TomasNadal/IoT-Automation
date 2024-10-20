@@ -1,0 +1,66 @@
+# 3. SQL queries to create new tables
+
+CREATE TABLE empresas (
+    id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE controladores (
+    id VARCHAR(15) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    empresa_id VARCHAR(36) REFERENCES empresas(id),
+    config JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE signals (
+    id SERIAL PRIMARY KEY,
+    controlador_id VARCHAR(15) REFERENCES controladores(id),
+    tstamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    value_sensor1 BOOLEAN,
+    value_sensor2 BOOLEAN,
+    value_sensor3 BOOLEAN,
+    value_sensor4 BOOLEAN,
+    value_sensor5 BOOLEAN,
+    value_sensor6 BOOLEAN,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE users (
+    id VARCHAR(36) PRIMARY KEY,
+    username VARCHAR(80) UNIQUE NOT NULL,
+    first_name VARCHAR(150),
+    surname VARCHAR(150),
+    email VARCHAR(120) UNIQUE NOT NULL,
+    password VARCHAR(500) NOT NULL,
+    empresa_id VARCHAR(36) REFERENCES empresas(id),
+    permisos JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE avisos (
+    id VARCHAR(36) PRIMARY KEY,
+    controlador_id VARCHAR(15) REFERENCES controladores(id),
+    config JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sensor_metrics (
+    id VARCHAR(36) PRIMARY KEY,
+    controlador_id VARCHAR(15) REFERENCES controladores(id),
+    connected_time_minutes INTEGER DEFAULT 0,
+    time_value_sensor1 INTEGER DEFAULT 0,
+    time_value_sensor2 INTEGER DEFAULT 0,
+    time_value_sensor3 INTEGER DEFAULT 0,
+    time_value_sensor4 INTEGER DEFAULT 0,
+    time_value_sensor5 INTEGER DEFAULT 0,
+    time_value_sensor6 INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);

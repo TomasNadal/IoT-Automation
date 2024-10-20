@@ -12,7 +12,7 @@ const RecentActivityFeed = ({ controladores }) => {
       .map(c => ({
         id: c.id,
         name: c.name,
-        activity: `Last signal at ${new Date(c.last_signal.timestamp).toLocaleString()}`,
+        activity: `Última señal: ${new Date(c.last_signal.tstamp).toLocaleString()}`,
       }))
       .slice(0, 5);
   }, [controladores]);

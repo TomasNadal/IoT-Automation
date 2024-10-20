@@ -15,10 +15,9 @@ logging.basicConfig(filename='database_connections.log', level=logging.INFO,
 def db_connection_logger(is_transaction=False):
     session = None
     try:
-        if is_transaction:
-            session = current_app.TransactionFactory()
-        else:
-            session = current_app.SessionFactory()
+
+        session = current_app.db_factory
+
         
         # Get information about the calling function
         frame = inspect.currentframe().f_back
