@@ -25,8 +25,8 @@
 .sensor-container.off.aceite { background-color: orange; }
 .sensor-container.on.marcha { background-color: green; }
 .sensor-container.off.marcha { background-color: orange; }
-.sensor-container.on.magnetotérmico { background-color: green; }
-.sensor-container.off.magnetotérmico { background-color: red; }
+.sensor-container.on.magnetotermico { background-color: green; }
+.sensor-container.off.magnetotermico { background-color: red; }
 .sensor-container.on.temperatura { background-color: green; }
 .sensor-container.off.temperatura { background-color: red; }
 .sensor-container.on.listo { background-color: green; }

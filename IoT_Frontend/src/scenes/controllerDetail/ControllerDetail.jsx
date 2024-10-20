@@ -1,24 +1,18 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import {
-  Box,
-  Typography,
-  Grid,
-  Paper,
-  useTheme,
-  CircularProgress,
-  Button,
+  Box, Typography, Grid, useTheme, CircularProgress, Button,
+  Card, CardContent
 } from "@mui/material";
 import { DataContext } from "../../context/DataContext";
 import { WebSocketContext } from "../../context/WebSocketContext";
-import SensorStatus from "../../components/SensorStatus";
 import Header from "../../components/Header";
 import { tokens } from "../../theme";
 import axios from "axios";
-import { ArrowForward as ArrowForwardIcon } from "@mui/icons-material";
-import { format, isToday } from "date-fns";
 import SensorConnectionTimeline from "../../components/SensorConnectionTimeline";
 import ConfiguracionControlador from "../../components/ConfiguracionControlador";
+import RecentChanges from "../../components/RecentChanges";
+import ControllerInfo from "../../components/ControllerInfo";
 
 const ControllerDetail = () => {
   const { id } = useParams();
@@ -31,61 +25,66 @@ const ControllerDetail = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
-  const fetchData = async () => {
+  const fetchChangesWithMapping = useCallback(async (controllerId) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/front/controlador/${controllerId}/changes`);
+      const controlador = controladores.find(c => c.id === controllerId);
+      
+      if (!controlador) {
+        console.error(`Controller with id ${controllerId} not found`);
+        return [];
+      }
+
+      const sensorNameMap = Object.entries(controlador.config).reduce((acc, [key, value]) => {
+        acc[key] = value.name;
+        return acc;
+      }, {});
+
+      return response.data.map(change => ({
+        ...change,
+        controladorId: controlador.id,
+        controladorName: controlador.name,
+        changes: change.changes.map(c => ({
+          ...c,
+          sensor: sensorNameMap[c.sensor] || c.sensor
+        }))
+      }));
+    } catch (error) {
+      console.error(`Error fetching changes for controller ${controllerId}:`, error);
+      return [];
+    }
+  }, [controladores]);
+
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const endpoints = [
-        `http://localhost:5000/dashboard/controlador/${id}/detail`,
-        `http://localhost:5000/dashboard/controlador/${id}/changes`,
-      ];
-
-      const results = await Promise.all(
-        endpoints.map(endpoint => 
-          axios.get(endpoint).catch(error => {
-            console.error(`Error fetching from ${endpoint}:`, error);
-            return null;
-          })
-        )
-      );
-
-      const [controllerResponse, changesResponse] = results;
+      const [controllerResponse, changesResponse] = await Promise.all([
+        axios.get(`http://localhost:5000/front/controlador/${id}/detail`),
+        fetchChangesWithMapping(id)
+      ]);
 
       if (controllerResponse) setController(controllerResponse.data);
       if (changesResponse) {
-        const todayChanges = (changesResponse.data || []).filter((change) =>
-          isToday(new Date(change.timestamp))
-        );
-        setRecentChanges(todayChanges);
+        console.log("Fetched changes:", changesResponse);
+        setRecentChanges(changesResponse);
       }
-
     } catch (error) {
       console.error("Error fetching data:", error);
       setError("Failed to fetch some data. Please try again later.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, fetchChangesWithMapping]);
 
-  const fetchSensorData = async (controladorId, sensorId, startDate, endDate) => {
-    try {
-      const response = await axios.get(`http://localhost:5000/dashboard/controlador/${controladorId}/sensor/${sensorId}/connection-data`, {
-        params: { startDate: startDate.toISOString(), endDate: endDate.toISOString() }
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching sensor data:", error);
-      throw error;
-    }
-  };
   useEffect(() => {
     fetchData();
-  }, [id]);
+  }, [fetchData]);
 
   useEffect(() => {
     if (socket) {
       const handleUpdate = (data) => {
-        if (data.controlador_id === parseInt(id)) {
+        if (data.controlador_id === id) {
           updateControlador(data);
           fetchData();
         }
@@ -97,160 +96,44 @@ const ControllerDetail = () => {
         socket.off("update_controladores", handleUpdate);
       };
     }
-  }, [socket, id, updateControlador]);
+  }, [socket, id, updateControlador, fetchData]);
 
-  const getSensorImage = (sensorName, signalType, signalValue) => {
-    const imagePath = `/images/sensors/${sensorName.toLowerCase()}.png`;
-    return (
-      <Box
-        className={`sensor-container ${
-          signalValue !== undefined
-            ? signalType === "NA"
-              ? signalValue === true
-                ? "on"
-                : "off"
-              : signalValue === false
-              ? "on"
-              : "off"
-            : "no tension"
-        }`}
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: 30,
-          height: 30,
-          borderRadius: "50%",
-          backgroundColor: signalValue
-            ? colors.greenAccent[500]
-            : colors.redAccent[500],
-        }}
-      >
-        <img
-          src={imagePath}
-          alt={sensorName}
-          style={{ height: "20px", filter: "brightness(0) invert(1)" }}
-        />
-      </Box>
-    );
-  };
-
-  if (loading) {
-    return <CircularProgress />;
-  }
-
-  if (error) {
-    return <Typography color="error">{error}</Typography>;
-  }
-
-  if (!controller) {
-    return <Typography>Controller not found</Typography>;
-  }
+    if (loading) return <CircularProgress />;
+  if (error) return <Typography color="error">{error}</Typography>;
+  if (!controller) return <Typography>Controller not found</Typography>;
 
   return (
     <Box m="20px">
       <Header title={controller.name} subtitle="Detailed Controller View" />
       <Grid container spacing={3}>
-        <Grid item xs={12} md={4}>
-          <Paper elevation={3} sx={{ p: 3, backgroundColor: colors.primary[400] }}>
-            <Typography variant="h5" mb={2}>Sensor Status</Typography>
-            {Object.entries(controller.config).map(([key, config]) => (
-              <SensorStatus
-                key={key}
-                name={config.name}
-                value={controller.last_signal?.[config.name]}
-                type={config.tipo}
-              />
-            ))}
-          </Paper>
+        <Grid item xs={12} md={6}>
+          <ControllerInfo controller={controller} />
         </Grid>
-        <Grid item xs={12} md={4}>
-          <Paper
-            elevation={3}
-            sx={{
-              p: 3,
-              backgroundColor: colors.primary[400],
-              height: "100%",
-              maxHeight: 400,
-              overflow: "auto",
-            }}
-          >
-            <Typography variant="h5" mb={2}>
-              Recent Changes (Today)
-            </Typography>
-            {recentChanges.length > 0 ? (
-              recentChanges.map((change, changeIndex) => (
-                <Box key={`change-${changeIndex}-${change.timestamp}`} mb={2}>
-                  <Typography
-                    variant="subtitle2"
-                    color={colors.greenAccent[500]}
-                  >
-                    {`${format(new Date(change.timestamp), "HH:mm:ss")}`}
-                  </Typography>
-                  {change.changes.map((detail, detailIndex) => {
-                    const sensorConfig = controller.config[detail.sensor];
-                    const sensorName = sensorConfig
-                      ? sensorConfig.name
-                      : "Unknown";
-                    const sensorType = sensorConfig ? sensorConfig.tipo : "N/A";
-                    return (
-                      <Box
-                        key={`detail-${changeIndex}-${detailIndex}`}
-                        display="flex"
-                        alignItems="center"
-                        mb={1}
-                      >
-                        <Typography variant="body2" color={colors.grey[100]} sx={{ flexGrow: 1 }}>
-                          {`${sensorName}:`}
-                        </Typography>
-                        <Box
-                          display="flex"
-                          alignItems="center"
-                          justifyContent="flex-end"
-                        >
-                          {getSensorImage(
-                            sensorName,
-                            sensorType,
-                            detail.old_value
-                          )}
-                          <ArrowForwardIcon
-                            sx={{ mx: 1, color: colors.grey[100], fontSize: 16 }}
-                          />
-                          {getSensorImage(
-                            sensorName,
-                            sensorType,
-                            detail.new_value
-                          )}
-                        </Box>
-                      </Box>
-                    );
-                  })}
-                </Box>
-              ))
-            ) : (
-              <Typography variant="body2" color={colors.grey[100]}>
-                No changes found for today.
-              </Typography>
-            )}
-          </Paper>
+        <Grid item xs={12} md={6}>
+          <Card elevation={3} sx={{ backgroundColor: colors.primary[400], height: '100%', overflow: 'auto' }}>
+            <CardContent>
+              <RecentChanges changes={recentChanges} />
+            </CardContent>
+          </Card>
         </Grid>
-
         <Grid item xs={12}>
-          <Paper elevation={3} sx={{ p: 3, backgroundColor: colors.primary[400] }}>
-            <Typography variant="h5" mb={2}>Sensor Connection Timeline</Typography>
-            <SensorConnectionTimeline
-              controladorId={controller.id}
-              sensors={Object.entries(controller.config).map(([key, config]) => ({
-                id: key,
-                name: config.name
-              }))}
-              fetchSensorData={fetchSensorData}
-            />
-          </Paper>
+          <Card elevation={3} sx={{ backgroundColor: colors.primary[400] }}>
+            <CardContent>
+              <Typography variant="h5" mb={2}>Sensor Connection Timeline</Typography>
+              <SensorConnectionTimeline
+                controladorId={controller.id}
+                sensors={Object.entries(controller.config).map(([key, config]) => ({
+                  id: key,
+                  name: config.name
+                }))}
+              />
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12}>
+          <ConfiguracionControlador controladorId={controller.id} />
         </Grid>
       </Grid>
-
-      <ConfiguracionControlador controladorId={controller.id} />
       <Box mt={3}>
         <Button variant="contained" color="primary" onClick={fetchData}>
           Refresh Data

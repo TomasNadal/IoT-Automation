@@ -1,18 +1,19 @@
-import React, { useContext, useMemo, useCallback } from 'react';
+import React, { useContext, useMemo, useCallback, useState, useEffect } from 'react';
 import { Box, Grid, Typography, useTheme } from '@mui/material';
 import { DataContext } from '../../context/DataContext';
 import { WebSocketContext } from '../../context/WebSocketContext';
 import { tokens } from '../../theme';
 import StatBox from '../../components/StatBox';
 import ControllerStatusChart from '../../components/ControllerStatusChart';
-import RecentActivityFeed from '../../components/RecentActivityFeed';
+import RecentChanges from '../../components/RecentChanges';
 import QuickActionButtons from '../../components/QuickActionButtons';
 import ResourceUsageGraph from '../../components/ResourceUsageGraph';
 import ControllerMap from '../../components/ControllerMap';
 import ControladoresList from '../controladoresList/ControladoresList';
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
-import SensorsIcon from '@mui/icons-material/Sensors';
 import WarningIcon from '@mui/icons-material/Warning';
+import RecentActivityFeed from '../../components/RecentActivityFeed';
+import axios from 'axios';
 
 const isControllerConnected = (controller) => {
   if (!controller.last_signal) return false;
@@ -26,31 +27,66 @@ const EnhancedDashboardOverview = () => {
   const colors = tokens(theme.palette.mode);
   const { controladores, connectedStats } = useContext(DataContext);
   const { isConnected } = useContext(WebSocketContext);
+  const [allRecentChanges, setAllRecentChanges] = useState([]);
 
   const calculateStats = useCallback(() => {
     const totalControllers = controladores.length;
     const connectedControllers = controladores.filter(isControllerConnected).length;
     const disconnectedControllers = totalControllers - connectedControllers;
-    const totalSensors = controladores.reduce((acc, controlador) => 
-      acc + Object.keys(controlador.config || {}).length, 0);
-    const activeAlerts = disconnectedControllers; // Consider disconnected controllers as active alerts
+    const activeAlerts = disconnectedControllers;
 
     return {
       totalControllers,
       connectedControllers,
       disconnectedControllers,
-      totalSensors,
       activeAlerts
     };
   }, [controladores]);
 
   const stats = useMemo(() => calculateStats(), [calculateStats]);
 
+  useEffect(() => {
+    const fetchAllRecentChanges = async () => {
+      try {
+        const changesPromises = controladores.map(controlador => 
+          axios.get(`http://localhost:5000/front/controlador/${controlador.id}/changes`)
+        );
+        const responses = await Promise.all(changesPromises);
+        
+        const allChanges = responses.flatMap((response, index) => {
+          const controlador = controladores[index];
+          const sensorNameMap = Object.entries(controlador.config).reduce((acc, [key, value]) => {
+            acc[key] = value.name;
+            return acc;
+          }, {});
+
+          return response.data.map(change => ({
+            ...change,
+            controladorId: controlador.id,
+            controladorName: controlador.name,
+            changes: change.changes.map(c => ({
+              ...c,
+              sensor: sensorNameMap[c.sensor] || c.sensor // Use mapped name if available, otherwise use original
+            }))
+          }));
+        });
+
+        // Sort all changes by timestamp, most recent first
+        allChanges.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        setAllRecentChanges(allChanges);
+      } catch (error) {
+        console.error('Error fetching recent changes:', error);
+      }
+    };
+
+    fetchAllRecentChanges();
+  }, [controladores]);
 
   return (
     <Box m="20px">
       <Grid container spacing={3}>
-      <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={4}>
           <StatBox
             title={stats.totalControllers.toString()}
             subtitle="Total Controllers"
@@ -59,7 +95,7 @@ const EnhancedDashboardOverview = () => {
             icon={<ElectricBoltIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={4}>
           <StatBox
             title={stats.connectedControllers.toString()}
             subtitle="Connected Controllers"
@@ -68,16 +104,7 @@ const EnhancedDashboardOverview = () => {
             icon={<ElectricBoltIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatBox
-            title={stats.totalSensors.toString()}
-            subtitle="Total Sensors"
-            progress={stats.totalSensors > 0 ? 1 : 0}
-            increase={`${stats.totalSensors}`}
-            icon={<SensorsIcon sx={{ color: colors.greenAccent[600], fontSize: "26px" }} />}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={4}>
           <StatBox
             title={stats.activeAlerts.toString()}
             subtitle="Active Alerts"
@@ -94,8 +121,10 @@ const EnhancedDashboardOverview = () => {
           />
         </Grid>
         <Grid item xs={12} md={4}>
-          <RecentActivityFeed controladores={controladores} />
+          <RecentChanges changes={allRecentChanges} />
         </Grid>
+
+
 
         <Grid item xs={12}>
           <Box
@@ -107,7 +136,6 @@ const EnhancedDashboardOverview = () => {
             <ControladoresList />
           </Box>
         </Grid>
-
 
         {/* Row 3: Additional Components */}
         <Grid item xs={12} md={4}>

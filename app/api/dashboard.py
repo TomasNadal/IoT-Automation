@@ -188,7 +188,7 @@ class ControllerDetail(Resource):
                 if not controlador:
                     api.abort(404, "Controller not found")
 
-                signals = session.query(Signal).filter_by(id=controlador_id).order_by(Signal.tstamp.desc()).limit(100).all()
+                signals = session.query(Signal).filter_by(controlador_id=controlador_id).order_by(Signal.tstamp.desc()).limit(10).all()
                 
                 controlador_data = controlador.to_dict()
                 controlador_data['señales'] = [signal.to_dict() for signal in signals]
@@ -363,8 +363,8 @@ class ControllerConfig(Resource):
         response.headers.add('Access-Control-Allow-Origin', 'http://localhost:5173')
         return response
     
-def controlador_changes(session, controlador_id, limit=100):
-    controlador_signals = session.query(Signal).filter_by(id=controlador_id).order_by(Signal.tstamp.desc()).limit(limit).all()
+def controlador_changes(session, controlador_id, limit=3):
+    controlador_signals = session.query(Signal).filter_by(controlador_id=controlador_id).order_by(Signal.tstamp.desc()).limit(limit).all()
     changed_signals = []
     if controlador_signals:
         sensor_names = ['value_sensor1', 'value_sensor2', 'value_sensor3', 'value_sensor4', 'value_sensor5', 'value_sensor6']
