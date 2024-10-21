@@ -3,8 +3,7 @@ eventlet.monkey_patch()
 
 import os
 from flask import Flask
-from app import create_app
-from app.extensions import socketio
+from app import create_app, socketio
 from app.logging_config import setup_logging
 import logging
 import sys
@@ -53,7 +52,7 @@ def run_session_app():
 # Function to run the transaction app
 def run_transaction_app():
     logger.info("Starting transaction app on port 5001")
-    transaction_app.run(debug=True, port=5001, host='0.0.0.0')
+    transaction_app.run(debug=False, port=5001, host='0.0.0.0')
 
 if __name__ == '__main__':
     run_session_app()

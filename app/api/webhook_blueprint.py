@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.extensions import socketio
+from app import socketio
 import logging
 
 webhook_bp = Blueprint('webhook', __name__)

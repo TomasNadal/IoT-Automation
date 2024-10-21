@@ -1,20 +1,19 @@
-# logging_config.py
+# In logging_config.py
 
 import logging
 from logging.handlers import RotatingFileHandler
 import os
-from logging.handlers import TimedRotatingFileHandler
+from concurrent_log_handler import ConcurrentRotatingFileHandler
 
 def setup_logging(app):
     if not os.path.exists('logs'):
         os.mkdir('logs')
     
-    # Use TimedRotatingFileHandler instead of RotatingFileHandler
-    file_handler = TimedRotatingFileHandler(
+    file_handler = ConcurrentRotatingFileHandler(
         'logs/app.log', 
-        when="midnight", 
-        interval=1,
-        backupCount=10
+        maxBytes=10 * 1024 * 1024,  # 10MB
+        backupCount=10,
+        use_gzip=True
     )
     file_handler.setFormatter(logging.Formatter(
         '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
@@ -29,3 +28,6 @@ def setup_logging(app):
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
     app.logger.addHandler(console_handler)
+
+    # Suppress werkzeug logging
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)

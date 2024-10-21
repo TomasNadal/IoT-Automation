@@ -9,7 +9,7 @@ const getSocketConfig = () => {
     : 'http://localhost:5000';  // Your development server URL
 
   const socketOptions = {
-    path: '/socket.io',  // Adjust this if your server uses a different path
+    path: '',  // Adjust this if your server uses a different path
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,

@@ -4,22 +4,23 @@ import logging
 from .extensions import socketio
 from threading import Lock
 
+logger = logging.getLogger(__name__)
 
 @socketio.on('connect')
 def handle_connect():
-    logging.info(f"Client connected: {request.sid}")
-    logging.info(f"Transport: {request.namespace.transport.name}")
-    logging.info(f"Total clients: {len(socketio.server.eio.sockets)}")
+    logger.info(f"Client connected: {request.sid}")
+    logger.info(f"Transport: {request.namespace.transport.name}")
+    logger.info(f"Total clients: {len(socketio.server.eio.sockets)}")
+    emit('connection_response', {'data': 'Connected successfully!'})
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    logging.info(f"Client disconnected: {request.sid}")
- 
+    logger.info(f"Client disconnected: {request.sid}")
 
-@socketio.on('my_event')
-def handle_my_event(message):
-    session['receive_count'] = session.get('receive_count', 0) + 1
-    emit('my_response', {'data': message['data'], 'count': session['receive_count']})
+@socketio.on('message')
+def handle_message(message):
+    logger.info(f"Received message: {message}")
+    emit('response', {'data': 'Message received!'})
 
 @socketio.on('my_broadcast_event')
 def handle_my_broadcast_event(message):

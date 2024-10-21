@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app, request, make_response
+from flask import Blueprint, current_app, request, make_response, jsonify
 from flask_restx import Api, Resource, fields
 from ..models import Empresa, Controlador, Signal, Aviso
 from sqlalchemy.sql import func, case, and_, text
@@ -8,10 +8,16 @@ from datetime import datetime, timedelta
 import pytz
 from flask_cors import CORS, cross_origin
 import uuid
+import logging
 import json
 
 dashboard = Blueprint('dashboard', __name__)
 CORS(dashboard)
+
+logger = logging.getLogger(__name__)
+def handle_database_error(e):
+    logger.error(f"Database error: {str(e)}")
+    return jsonify({"error": "Database connection error. Please try again later."}), 503
 
 api = Api(dashboard, version='1.0', title='Dashboard API',
     description='API for IoT Dashboard',
@@ -123,40 +129,50 @@ class DashboardData(Resource):
                     controladores_list.append(controlador_dict)
 
                 return controladores_list
+        except SQLAlchemyError as e:
+            return handle_database_error(e)
         except Exception as e:
-            api.abort(500, f"An error occurred: {str(e)}")
+            logger.error(f"Unexpected error: {str(e)}")
+            return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
 
 @ns_controlador.route('/<string:controlador_id>/sensor/<string:sensor_id>/connection-data')
 class SensorConnectionData(Resource):
     @ns_controlador.doc('get_sensor_connection_data')
     def get(self, controlador_id, sensor_id):
         """Fetch connection data for a specific sensor"""
-        start_date = request.args.get('startDate')
-        end_date = request.args.get('endDate')
-        start_time = request.args.get('startTime')
-        end_time = request.args.get('endTime')
-        
-        utc = pytz.UTC
-        
-        def parse_and_convert_to_utc(date_str, time_str=None):
-            if 'T' in date_str:
-                dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-            else:
-                dt = datetime.fromisoformat(f"{date_str}T{'00:00' if time_str is None else time_str}")
+        try:
+            start_date = request.args.get('startDate')
+            end_date = request.args.get('endDate')
+            start_time = request.args.get('startTime')
+            end_time = request.args.get('endTime')
             
-            if dt.tzinfo is None:
-                return utc.localize(dt)
-            return dt.astimezone(utc)
+            utc = pytz.UTC
+            
+            def parse_and_convert_to_utc(date_str, time_str=None):
+                if 'T' in date_str:
+                    dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                else:
+                    dt = datetime.fromisoformat(f"{date_str}T{'00:00' if time_str is None else time_str}")
+                
+                if dt.tzinfo is None:
+                    return utc.localize(dt)
+                return dt.astimezone(utc)
 
-        start_datetime = parse_and_convert_to_utc(start_date, start_time)
-        end_datetime = parse_and_convert_to_utc(end_date, end_time)
+            start_datetime = parse_and_convert_to_utc(start_date, start_time)
+            end_datetime = parse_and_convert_to_utc(end_date, end_time)
+            
+            if end_datetime <= start_datetime:
+                end_datetime += timedelta(days=1)
+            
+            connection_data = fetch_sensor_connection_data(controlador_id, sensor_id, start_datetime, end_datetime)
+            
+            return connection_data
         
-        if end_datetime <= start_datetime:
-            end_datetime += timedelta(days=1)
-        
-        connection_data = fetch_sensor_connection_data(controlador_id, sensor_id, start_datetime, end_datetime)
-        
-        return connection_data
+        except SQLAlchemyError as e:
+            return handle_database_error(e)
+        except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}")
+            return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
 
 @ns_dashboard.route('/empresa/<string:id>/connected_stats')
 class ConnectedStats(Resource):
@@ -173,8 +189,11 @@ class ConnectedStats(Resource):
                     "connected": connected_count,
                     "disconnected": disconnected_count
                 }
+        except SQLAlchemyError as e:
+            return handle_database_error(e)
         except Exception as e:
-            api.abort(500, f"An error occurred: {str(e)}")
+            logger.error(f"Unexpected error: {str(e)}")
+            return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
 
 @ns_controlador.route('/<string:controlador_id>/detail')
 class ControllerDetail(Resource):
@@ -194,8 +213,11 @@ class ControllerDetail(Resource):
                 controlador_data['señales'] = [signal.to_dict() for signal in signals]
             
                 return controlador_data
+        except SQLAlchemyError as e:
+            return handle_database_error(e)
         except Exception as e:
-            api.abort(500, f"An error occurred: {str(e)}")
+            logger.error(f"Unexpected error: {str(e)}")
+            return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
 
 @ns_controlador.route('/<string:controlador_id>/changes')
 class ControllerChanges(Resource):
@@ -207,8 +229,11 @@ class ControllerChanges(Resource):
             with current_app.db_factory() as session:
                 changes = controlador_changes(session, controlador_id)
                 return changes
+        except SQLAlchemyError as e:
+            return handle_database_error(e)
         except Exception as e:
-            api.abort(500, f"An error occurred: {str(e)}")
+            logger.error(f"Unexpected error: {str(e)}")
+            return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
 
 @ns_controlador.route('/<string:controlador_id>/sensor_activity')
 class SensorActivity(Resource):
@@ -236,8 +261,11 @@ class SensorActivity(Resource):
                         })
             
                 return activity_data
+        except SQLAlchemyError as e:
+            return handle_database_error(e)
         except Exception as e:
-            api.abort(500, f"An error occurred: {str(e)}")
+            logger.error(f"Unexpected error: {str(e)}")
+            return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
 
 @ns_controlador.route('/<string:controlador_id>/sensor_uptime')
 class SensorUptime(Resource):
@@ -266,8 +294,11 @@ class SensorUptime(Resource):
                     uptime_data[sensor] = (uptime / total_time) * 100 if total_time > 0 else 0
             
                 return uptime_data
+        except SQLAlchemyError as e:
+            return handle_database_error(e)
         except Exception as e:
-            api.abort(500, f"An error occurred: {str(e)}")
+            logger.error(f"Unexpected error: {str(e)}")
+            return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
 
 @ns_controlador.route('/<string:controlador_id>/sensor_correlation')
 class SensorCorrelation(Resource):
@@ -295,8 +326,11 @@ class SensorCorrelation(Resource):
                             correlation_matrix[s1][s2] = correlation / len(signals) if signals else 0
             
                 return correlation_matrix
+        except SQLAlchemyError as e:
+            return handle_database_error(e)
         except Exception as e:
-            api.abort(500, f"An error occurred: {str(e)}")
+            logger.error(f"Unexpected error: {str(e)}")
+            return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
 
 @ns_controlador.route('/<string:controlador_id>/alerts')
 class ControllerAlerts(Resource):
@@ -308,8 +342,11 @@ class ControllerAlerts(Resource):
             with current_app.db_factory() as session:
                 avisos = session.query(Aviso).filter_by(controlador_id=controlador_id).order_by(Aviso.id.desc()).limit(10).all()
                 return [aviso.to_dict() for aviso in avisos]
+        except SQLAlchemyError as e:
+            return handle_database_error(e)
         except Exception as e:
-            api.abort(500, f"An error occurred: {str(e)}")
+            logger.error(f"Unexpected error: {str(e)}")
+            return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
 
 
 @ns_controlador.route('/<string:controlador_id>/config')
@@ -325,8 +362,11 @@ class ControllerConfig(Resource):
                 if not controlador:
                     api.abort(404, "Controller not found")
                 return {'config': controlador.config}
+        except SQLAlchemyError as e:
+            return handle_database_error(e)
         except Exception as e:
-            api.abort(500, f"An error occurred: {str(e)}")
+            logger.error(f"Unexpected error: {str(e)}")
+            return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
 
     @ns_controlador.doc('update_controller_config')
     @ns_controlador.expect(config_model)
@@ -350,8 +390,11 @@ class ControllerConfig(Resource):
                 session.commit()
 
                 return {'message': 'Configuration updated successfully'}
+        except SQLAlchemyError as e:
+            return handle_database_error(e)
         except Exception as e:
-            api.abort(500, f"An error occurred: {str(e)}")
+            logger.error(f"Unexpected error: {str(e)}")
+            return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
 
     @ns_controlador.doc('options_controller_config')
     @cross_origin(origin='http://localhost:5173', methods=['GET', 'POST', 'OPTIONS'])

@@ -9,7 +9,8 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 from .config import config
 import logging
 from .db_utils import get_db_stats, db_connection_logger
-from .extensions import db, socketio, init_socketio
+from .extensions import db
+from .socket_events import socketio
 
 def create_app(config_name):
     app = Flask(__name__)
@@ -21,8 +22,9 @@ def create_app(config_name):
 
     # Initialize extensions
     db.init_app(app)
-    init_socketio(app)
     CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
+
+
 
     @app.teardown_appcontext
     def shutdown_session(exception=None):
@@ -38,6 +40,7 @@ def create_app(config_name):
     app.register_blueprint(dashboard, url_prefix='/front')
     app.register_blueprint(webhook_bp, url_prefix='/webhook')
 
+    socketio.init_app(app)
     # Add a route to check database stats
     @app.route('/db_stats')
     def db_stats():
