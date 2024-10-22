@@ -78,7 +78,51 @@ class Aviso(BaseModel):
     __tablename__ = 'avisos'
     id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
     controlador_id = db.Column(db.String(15), db.ForeignKey('controladores.id'), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.String(500))
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(TIMESTAMP(timezone=True), server_default=func.now())
+    updated_at = db.Column(TIMESTAMP(timezone=True), onupdate=func.now())
     config = db.Column(JSONB, nullable=False)
+    # Add relationship to controller
+    controlador = db.relationship('Controlador', backref=db.backref('avisos', lazy=True))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'controlador_id': self.controlador_id,
+            'name': self.name,
+            'description': self.description,
+            'is_active': self.is_active,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'config': self.config
+        }
+
+class AvisoLog(BaseModel):
+    __tablename__ = 'aviso_logs'
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    aviso_id = db.Column(db.String(36), db.ForeignKey('avisos.id'), nullable=False)
+    triggered_at = db.Column(TIMESTAMP(timezone=True), server_default=func.now())
+    sensor_name = db.Column(db.String(255), nullable=False)
+    old_value = db.Column(db.Boolean)
+    new_value = db.Column(db.Boolean)
+    signal_id = db.Column(db.Integer, db.ForeignKey('signals.id'))
+    
+    # Add relationships
+    aviso = db.relationship('Aviso')
+    signal = db.relationship('Signal')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'aviso_id': self.aviso_id,
+            'triggered_at': self.triggered_at.isoformat() if self.triggered_at else None,
+            'sensor_name': self.sensor_name,
+            'old_value': self.old_value,
+            'new_value': self.new_value,
+            'signal_id': self.signal_id
+        }
 
 class SensorMetrics(BaseModel):
     __tablename__ = 'sensor_metrics'

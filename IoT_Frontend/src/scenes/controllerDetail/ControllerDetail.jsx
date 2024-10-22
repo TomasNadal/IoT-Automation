@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext, useCallback } from "react";
+import React, { useEffect, useState, useContext, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import {
   Box, Typography, Grid, useTheme, CircularProgress, Button,
@@ -17,37 +17,43 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 
 const ControllerDetail = () => {
   const { id } = useParams();
+  const theme = useTheme();
+  const colors = tokens(theme.palette.mode);
+  
+  // Get data from contexts
   const { controladores, updateControlador } = useContext(DataContext);
   const { socket } = useContext(WebSocketContext);
-  const [controller, setController] = useState(null);
+
+  // Local states for additional data not in the context
   const [recentChanges, setRecentChanges] = useState([]);
   const [uptimeDowntimeData, setUptimeDowntimeData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const theme = useTheme();
-  const colors = tokens(theme.palette.mode);
 
-
+  // Get controller from context using useMemo
+  const controller = useMemo(() => 
+    controladores.find(c => c.id === id),
+    [controladores, id]
+  );
 
   const fetchChangesWithMapping = useCallback(async (controllerId) => {
     try {
       const response = await axios.get(`http://localhost:5000/front/controlador/${controllerId}/changes`);
-      const controlador = controladores.find(c => c.id === controllerId);
       
-      if (!controlador) {
+      if (!controller) {
         console.error(`Controller with id ${controllerId} not found`);
         return [];
       }
 
-      const sensorNameMap = Object.entries(controlador.config).reduce((acc, [key, value]) => {
+      const sensorNameMap = Object.entries(controller.config).reduce((acc, [key, value]) => {
         acc[key] = value.name;
         return acc;
       }, {});
 
       return response.data.map(change => ({
         ...change,
-        controladorId: controlador.id,
-        controladorName: controlador.name,
+        controladorId: controller.id,
+        controladorName: controller.name,
         changes: change.changes.map(c => ({
           ...c,
           sensor: sensorNameMap[c.sensor] || c.sensor
@@ -57,19 +63,20 @@ const ControllerDetail = () => {
       console.error(`Error fetching changes for controller ${controllerId}:`, error);
       return [];
     }
-  }, [controladores]);
+  }, [controller]);
 
-  const fetchData = useCallback(async () => {
+  // Fetch additional data not available in context
+  const fetchAdditionalData = useCallback(async () => {
+    if (!controller) return;
+    
     setLoading(true);
     setError(null);
     try {
-      const [controllerResponse, changesResponse, uptimeDowntimeResponse] = await Promise.all([
-        axios.get(`http://localhost:5000/front/controlador/${id}/detail`),
+      const [changesResponse, uptimeDowntimeResponse] = await Promise.all([
         fetchChangesWithMapping(id),
         axios.get(`http://localhost:5000/front/controlador/${id}/uptime-downtime`)
       ]);
 
-      if (controllerResponse) setController(controllerResponse.data);
       if (changesResponse) {
         console.log("Fetched changes:", changesResponse);
         setRecentChanges(changesResponse);
@@ -79,46 +86,37 @@ const ControllerDetail = () => {
         setUptimeDowntimeData(uptimeDowntimeResponse.data);
       }
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error fetching additional data:", error);
       setError("Failed to fetch some data. Please try again later.");
     } finally {
       setLoading(false);
     }
-  }, [id, fetchChangesWithMapping]);
+  }, [id, controller, fetchChangesWithMapping]);
 
+  // Initial data fetch
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchAdditionalData();
+  }, [fetchAdditionalData]);
 
-
-  const handleControllerUpdate = useCallback((data) => {
-    setController(prev => ({
-      ...prev,
-      last_signal: data.new_signal,
-    }));
-    fetchData();
-  }, [fetchData]);
-
+  // Socket update handler
   useEffect(() => {
     if (socket) {
       const handleUpdate = (data) => {
         if (data.controlador_id === id) {
-          updateControlador(data);
-          fetchData();
+          // The DataContext will handle the main controller update
+          // We just need to refresh our additional data
+          fetchAdditionalData();
         }
       };
 
       socket.on("update_controladores", handleUpdate);
-
-      return () => {
-        socket.off("update_controladores", handleUpdate);
-      };
+      return () => socket.off("update_controladores", handleUpdate);
     }
-  }, [socket, id, updateControlador, fetchData]);
+  }, [socket, id, fetchAdditionalData]);
 
-  if (loading) return <CircularProgress />;
+  if (!controller) return <Typography>Controller not found</Typography>;
+  if (loading && !uptimeDowntimeData) return <CircularProgress />;
   if (error) return <Typography color="error">{error}</Typography>;
-  if (!controller || !uptimeDowntimeData) return <Typography>Controller not found or data not available</Typography>;
 
   return (
     <Box m="20px">
@@ -127,7 +125,7 @@ const ControllerDetail = () => {
         <Button
           variant="contained"
           color="primary"
-          onClick={fetchData}
+          onClick={fetchAdditionalData}
           startIcon={<RefreshIcon />}
         >
           Refresh Data
@@ -135,9 +133,9 @@ const ControllerDetail = () => {
       </Box>
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
-        <ControllerCard 
-            controller={controller} 
-            onUpdateController={handleControllerUpdate}
+          <ControllerCard 
+            controller={controller}
+            onUpdateController={updateControlador}
           />
         </Grid>
         <Grid item xs={12} md={6}>
@@ -153,7 +151,6 @@ const ControllerDetail = () => {
         <Grid item xs={12}>
           <Card elevation={3} sx={{ backgroundColor: colors.primary[400] }}>
             <CardContent>
-
               <UptimeDowntimeChart controladorId={controller.id} />
             </CardContent>
           </Card>

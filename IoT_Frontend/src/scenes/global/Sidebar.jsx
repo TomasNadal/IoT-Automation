@@ -6,7 +6,7 @@ import "react-pro-sidebar/dist/css/styles.css";
 import { tokens } from "../../theme";
 import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
 import PeopleOutlinedIcon from "@mui/icons-material/PeopleOutlined";
-
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
@@ -37,7 +37,14 @@ const Sidebar = () => {
   const colors = tokens(theme.palette.mode);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selected, setSelected] = useState("Dashboard");
+    // Add this to your items array in the Sidebar component
+  const newItem = {
+      title: "Alerts Management",
+      to: "/alerts",
+      icon: <NotificationsActiveIcon />
+    };
 
+  
   return (
     <Box
       sx={{
@@ -156,6 +163,13 @@ const Sidebar = () => {
               title="Calendar"
               to="/calendar"
               icon={<CalendarTodayOutlinedIcon />}
+              selected={selected}
+              setSelected={setSelected}
+            />
+            <Item
+              title="Alerts Management"
+              to="/alerts"
+              icon={<NotificationsActiveIcon />}
               selected={selected}
               setSelected={setSelected}
             />

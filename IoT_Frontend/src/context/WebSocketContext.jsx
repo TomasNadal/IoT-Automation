@@ -4,12 +4,12 @@ import io from 'socket.io-client';
 
 // Socket Configuration
 const getSocketConfig = () => {
-  const URL = process.env.NODE_ENV === 'production' 
-    ? 'https://your-production-domain.com'  // Replace with your actual production domain
-    : 'http://localhost:5000';  // Your development server URL
+  const URL = process.env.NODE_ENV === 'production'
+    ? 'https://your-production-domain.com'
+    : 'http://localhost:5000';
 
   const socketOptions = {
-    path: '',  // Adjust this if your server uses a different path
+    path: '',
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
@@ -37,6 +37,10 @@ export const WebSocketContext = createContext();
 export const WebSocketProvider = ({ children }) => {
   const { updateControlador } = useContext(DataContext);
   const [isConnected, setIsConnected] = useState(false);
+  
+  // Alert state
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const onUpdateControladores = useCallback((data) => {
     console.log('Received new data for controladores:', data);
@@ -47,10 +51,36 @@ export const WebSocketProvider = ({ children }) => {
     }
   }, [updateControlador]);
 
+  // Alert handlers
+  const handleNewAlert = useCallback((data) => {
+    console.log('Received new alert:', data);
+    const newNotification = {
+      id: Date.now(),
+      title: data.alert.name,
+      message: `${data.log.sensor_name}: ${data.log.old_value ? 'ON' : 'OFF'} → ${data.log.new_value ? 'ON' : 'OFF'}`,
+      timestamp: new Date(),
+      read: false,
+      ...data
+    };
+
+    setNotifications(prev => [newNotification, ...prev]);
+    setUnreadCount(prev => prev + 1);
+  }, []);
+
+  const markAllAsRead = useCallback(() => {
+    setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
+    setUnreadCount(0);
+  }, []);
+
+  const clearAllNotifications = useCallback(() => {
+    setNotifications([]);
+    setUnreadCount(0);
+  }, []);
+
   useEffect(() => {
     function onConnect() {
       console.log(`WebSocket connected. Socket ID: ${socket.id}`);
-      socket.emit("message", `WebSocket connected. Socket ID: ${socket.id}`)
+      socket.emit("message", `WebSocket connected. Socket ID: ${socket.id}`);
       setIsConnected(true);
     }
 
@@ -67,6 +97,7 @@ export const WebSocketProvider = ({ children }) => {
     socket.on('disconnect', onDisconnect);
     socket.on('connect_error', onConnectError);
     socket.on('update_controladores', onUpdateControladores);
+    socket.on('alert_triggered', handleNewAlert);
 
     if (socket.connected) {
       setIsConnected(true);
@@ -77,11 +108,22 @@ export const WebSocketProvider = ({ children }) => {
       socket.off('disconnect', onDisconnect);
       socket.off('connect_error', onConnectError);
       socket.off('update_controladores', onUpdateControladores);
+      socket.off('alert_triggered', handleNewAlert);
     };
-  }, [onUpdateControladores]);
+  }, [onUpdateControladores, handleNewAlert]);
+
+  const value = {
+    isConnected,
+    socket,
+    // Alert-related values
+    notifications,
+    unreadCount,
+    markAllAsRead,
+    clearAllNotifications
+  };
 
   return (
-    <WebSocketContext.Provider value={{ isConnected, socket }}>
+    <WebSocketContext.Provider value={value}>
       {children}
     </WebSocketContext.Provider>
   );

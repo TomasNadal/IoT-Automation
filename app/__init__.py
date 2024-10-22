@@ -31,11 +31,13 @@ def create_app(config_name):
     from .api.arduino import arduino
     from .api.dashboard import dashboard
     from .api.webhook_blueprint import webhook_bp
+    from .api.alerts import alerts_bp
 
     # Register blueprints
     app.register_blueprint(arduino, url_prefix='/api')
     app.register_blueprint(dashboard, url_prefix='/front')
     app.register_blueprint(webhook_bp, url_prefix='/webhook')
+    app.register_blueprint(alerts_bp, url_prefix='/alerts')
 
     # Import socket events to register them
     from . import socket_events  # This imports and registers the event handler

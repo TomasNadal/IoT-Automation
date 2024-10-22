@@ -94,3 +94,33 @@ def handle_update_controladores(data):
     socketio.emit('update_controladores', data)
 
 
+@socketio.on('join_controller_alerts')
+def handle_join_controller_alerts(data):
+    """Allow clients to subscribe to specific controller alerts"""
+    controller_id = data.get('controller_id')
+    if controller_id:
+        room = f"controller_alerts_{controller_id}"
+        join_room(room)
+        logger.info(f"Client {request.sid} joined alert room for controller {controller_id}")
+        emit('room_join_response', {
+            'status': 'success',
+            'room': room,
+            'message': f'Joined alert room for controller {controller_id}'
+        })
+
+def emit_alert(alert_type, data):
+    """
+    Emit alert events to specific rooms
+    alert_type: 'alert_triggered', 'alert_created', 'alert_updated', 'alert_deleted'
+    """
+    try:
+        controller_id = data.get('controlador_id')
+        if not controller_id:
+            logger.error(f"No controller_id in alert data: {data}")
+            return
+
+        room = f"controller_alerts_{controller_id}"
+        socketio.emit(alert_type, data, room=room)
+        logger.info(f"Emitted {alert_type} event to room {room}")
+    except Exception as e:
+        logger.error(f"Error emitting {alert_type} event: {str(e)}")

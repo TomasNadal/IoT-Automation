@@ -11,8 +11,10 @@ import { QueryClient, QueryClientProvider } from "react-query";
 import { ReactQueryDevtools } from 'react-query/devtools'
 import ControllerDetail from "./scenes/controllerDetail/ControllerDetail";
 import TestComponent from "./scenes/testScene/testScene";
+import AlertsManagement from './scenes/alertsManagement/AlertsManagement';
 import CompanyComponents from "./scenes/companyComponents";
 import AddControllerPage from './scenes/addController/AddControllerPage';
+import AlertNotification from "./components/AlertNotification";
 import 'react-tooltip/dist/react-tooltip.css';
 
 const queryClient = new QueryClient();
@@ -32,12 +34,14 @@ function App() {
                 <Sidebar isSidebar={isSidebar} />
                 <main className="content">
                   <Topbar setIsSidebar={setIsSidebar} />
+
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/controller/:id" element={<ControllerDetail />} />
                     <Route path="/empresa/:empresaId/add-controller" element={<AddControllerPage />} />
                     <Route path="/company-components" element={<CompanyComponents />} />
                     <Route path="/test" element = {<TestComponent/>} /> 
+                    <Route path="/alerts" element={<AlertsManagement />} />
                     {/* Add more routes here */}
                   </Routes>
                 </main>
