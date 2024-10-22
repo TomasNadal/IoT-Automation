@@ -4,23 +4,46 @@ from flask_socketio import emit, join_room, leave_room, close_room, rooms, disco
 import logging
 from flask_socketio import SocketIO
 from threading import Lock
-
-
+from .extensions import socketio
 
 logger = logging.getLogger(__name__)
 
-socketio = SocketIO(cors_allowed_origins="*", async_mode='eventlet', logger=True, engineio_logger=True)
 
 @socketio.on('connect')
-def handle_connect():
-    logger.info(f"Client connected: {request.sid}")
-    logger.info(f"Transport: {request.namespace.transport.name}")
-    logger.info(f"Total clients: {len(socketio.server.eio.sockets)}")
-    emit('connection_response', {'data': 'Connected successfully!'})
+def handle_connect(auth):
+    """
+    Handle client connection
+    auth: Authentication data (if any) sent by the client
+    """
+    try:
+        sid = request.sid
+        logger.info(f"Client connected: {sid}")
+        
+        # Log connection details
+        environ = request.environ
+        transport = environ.get('wsgi.url_scheme', 'unknown')
+        
+        logger.info(f"Connection details - SID: {sid}, Transport: {transport}")
+        logger.info(f"Total clients: {len(socketio.server.eio.sockets)}")
+        
+        # Send connection confirmation to client
+        emit('connection_response', {
+            'data': 'Connected successfully!',
+            'sid': sid
+        })
+    except Exception as e:
+        logger.error(f"Error in handle_connect: {str(e)}")
+        # Even if we have an error in logging, we don't want to break the connection
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    logger.info(f"Client disconnected: {request.sid}")
+    """Handle client disconnection"""
+    try:
+        sid = request.sid
+        logger.info(f"Client disconnected: {sid}")
+        logger.info(f"Remaining clients: {len(socketio.server.eio.sockets)}")
+    except Exception as e:
+        logger.error(f"Error in handle_disconnect: {str(e)}")
 
 @socketio.on('message')
 def handle_message(message):

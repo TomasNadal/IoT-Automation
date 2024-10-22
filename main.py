@@ -3,7 +3,7 @@ eventlet.monkey_patch()
 
 import os
 from flask import Flask
-from app import create_app
+from app import create_app, socketio
 from app.logging_config import setup_logging
 import logging
 import sys
@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(leve
 logger = logging.getLogger(__name__)
 
 def create_and_configure_app(config_name):
-    app, socketio = create_app(config_name)
+    app= create_app(config_name)
     if app is None:
         logger.error(f"Error: Application could not be created with config: {config_name}")
         return None
@@ -27,15 +27,15 @@ def create_and_configure_app(config_name):
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
 
-    return app,socketio
+    return app
 
 # Create session app
-session_app,socketio = create_and_configure_app('production_session')
+session_app = create_and_configure_app('production_session')
 
 # Create transaction app
-transaction_app, b = create_and_configure_app('production_transaction')
+transaction_app = create_and_configure_app('production_transaction')
 
-if session_app is None or transaction_app is None:
+if session_app is None:
     sys.exit(1)
 
 # Add a test route to session app
@@ -47,7 +47,7 @@ def test_route():
 # Function to run the session app
 def run_session_app():
     logger.info("Starting session app on port 5000")
-    socketio.run(session_app, debug=True, port=5000, host='0.0.0.0')
+    socketio.run(session_app, debug=False, port=5000, host='0.0.0.0')
 
 # Function to run the transaction app
 def run_transaction_app():

@@ -4,7 +4,7 @@ from datetime import datetime
 import requests
 import json
 
-BASE_URL = 'http://localhost:5001/api/data'
+BASE_URL = 'http://localhost:5000/api/data'
 HEADERS = {'Content-Type': 'application/json'}  # Changed to JSON
 NUM_CONTROLADORES = 2  # Number of Controladores to simulate
 INTERVAL = 3  # Interval between messages for each Controlador in seconds
