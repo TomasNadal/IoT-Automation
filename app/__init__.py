@@ -2,7 +2,6 @@ import eventlet
 eventlet.monkey_patch()
 
 from flask import Flask, g, jsonify
-from flask_socketio import SocketIO
 from flask_cors import CORS
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
@@ -25,7 +24,6 @@ def create_app(config_name):
     CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
 
 
-
     @app.teardown_appcontext
     def shutdown_session(exception=None):
         app.db_factory.remove()
@@ -40,10 +38,11 @@ def create_app(config_name):
     app.register_blueprint(dashboard, url_prefix='/front')
     app.register_blueprint(webhook_bp, url_prefix='/webhook')
 
-    socketio.init_app(app)
     # Add a route to check database stats
     @app.route('/db_stats')
     def db_stats():
         return get_db_stats()
     
-    return app
+    socketio.init_app(app, cors_allowed_origins="*", async_mode='eventlet')
+
+    return app,socketio

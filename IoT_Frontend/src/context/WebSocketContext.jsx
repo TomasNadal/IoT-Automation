@@ -50,6 +50,7 @@ export const WebSocketProvider = ({ children }) => {
   useEffect(() => {
     function onConnect() {
       console.log(`WebSocket connected. Socket ID: ${socket.id}`);
+      socket.emit("message", `WebSocket connected. Socket ID: ${socket.id}`)
       setIsConnected(true);
     }
 

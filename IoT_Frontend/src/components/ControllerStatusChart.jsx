@@ -7,8 +7,8 @@ const ControllerStatusChart = ({ connected, disconnected }) => {
   const colors = tokens(theme.palette.mode);
 
   const data = [
-    { name: 'Connected', value: connected, color: colors.greenAccent[500] },
-    { name: 'Disconnected', value: disconnected, color: colors.redAccent[500] },
+    { name: 'Conectado', value: connected, color: colors.greenAccent[500] },
+    { name: 'Desconectado', value: disconnected, color: colors.redAccent[500] },
   ];
 
   console.log('ControllerStatusChart data:', data); // Add this log
@@ -21,7 +21,7 @@ const ControllerStatusChart = ({ connected, disconnected }) => {
       height="100%"
     >
       <Typography variant="h5" fontWeight="600" color={colors.grey[100]}>
-        Controller Status
+        Status Controladores
       </Typography>
       <PieChart width={400} height={300}>
         <Pie

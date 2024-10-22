@@ -27,22 +27,25 @@ const getFriendlySensorName = (sensorKey) => {
   return match ? `Sensor ${match[1]}` : sensorKey;
 };
 
-const ConfiguracionControlador = ({ controladorId }) => {
+const ConfiguracionControlador = ({ controladorId, initialConfig, onConfigChange }) => {
   const { controladores, updateControlador } = useContext(DataContext);
-  const [pendingConfig, setPendingConfig] = useState({});
+  const [pendingConfig, setPendingConfig] = useState(initialConfig || {});
   const [error, setError] = useState(null);
   const [isValid, setIsValid] = useState(true);
   const [validationMessage, setValidationMessage] = useState("");
   const theme = useTheme();
 
-  const controlador = controladores.find(c => c.id === controladorId);
+  const controlador = controladorId !== "new" ? controladores.find(c => c.id === controladorId) : null;
 
   useEffect(() => {
     if (controlador) {
       setPendingConfig(controlador.config);
       validateConfig(controlador.config);
+    } else if (initialConfig) {
+      setPendingConfig(initialConfig);
+      validateConfig(initialConfig);
     }
-  }, [controlador]);
+  }, [controlador, initialConfig]);
 
   const validateConfig = (config) => {
     const sensorNames = new Set();
@@ -75,18 +78,32 @@ const ConfiguracionControlador = ({ controladorId }) => {
     };
     setPendingConfig(newConfig);
     validateConfig(newConfig);
+    if (onConfigChange) {
+      onConfigChange(newConfig);
+    }
   };
 
   const resetConfig = () => {
     if (controlador) {
       setPendingConfig(controlador.config);
       validateConfig(controlador.config);
+    } else if (initialConfig) {
+      setPendingConfig(initialConfig);
+      validateConfig(initialConfig);
     }
   };
 
   const handleSave = async () => {
     if (!validateConfig(pendingConfig)) {
       setError("No se puede guardar una configuración inválida.");
+      return;
+    }
+
+    if (controladorId === "new") {
+      // For new controllers, we don't save here. The parent component will handle it.
+      if (onConfigChange) {
+        onConfigChange(pendingConfig);
+      }
       return;
     }
 
@@ -111,14 +128,6 @@ const ConfiguracionControlador = ({ controladorId }) => {
     }
   };
 
-  if (!controladorId || !controlador) {
-    return (
-      <Typography variant="h3" color="textPrimary">
-        Selecciona un controlador para ver la configuración.
-      </Typography>
-    );
-  }
-
   if (Object.keys(pendingConfig).length === 0) {
     return (
       <Typography variant="h3" color="textPrimary">
@@ -137,9 +146,11 @@ const ConfiguracionControlador = ({ controladorId }) => {
           <StyledButton onClick={resetConfig} sx={{ mr: 2 }}>
             Restablecer Configuración
           </StyledButton>
-          <StyledButton onClick={handleSave} disabled={!isValid}>
-            Guardar Cambios
-          </StyledButton>
+          {controladorId !== "new" && (
+            <StyledButton onClick={handleSave} disabled={!isValid}>
+              Guardar Cambios
+            </StyledButton>
+          )}
         </Box>
       </Box>
 

@@ -1,10 +1,15 @@
 from flask import session, request
+
 from flask_socketio import emit, join_room, leave_room, close_room, rooms, disconnect
 import logging
-from .extensions import socketio
+from flask_socketio import SocketIO
 from threading import Lock
 
+
+
 logger = logging.getLogger(__name__)
+
+socketio = SocketIO(cors_allowed_origins="*", async_mode='eventlet', logger=True, engineio_logger=True)
 
 @socketio.on('connect')
 def handle_connect():
@@ -25,7 +30,7 @@ def handle_message(message):
 @socketio.on('my_broadcast_event')
 def handle_my_broadcast_event(message):
     session['receive_count'] = session.get('receive_count', 0) + 1
-    emit('my_response', {'data': message['data'], 'count': session['receive_count']}, broadcast=True)
+    emit('my_response', {'data': message['data'], 'count': session['receive_count']})
 
 @socketio.on('join')
 def handle_join(message):
@@ -63,4 +68,6 @@ def handle_my_ping():
 @socketio.on('update_controladores')
 def handle_update_controladores(data):
     print('Emitting update_controladores event with data:', data)
-    socketio.emit('update_controladores', data, broadcast=True)
+    socketio.emit('update_controladores', data)
+
+

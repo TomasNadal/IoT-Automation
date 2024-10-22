@@ -10,7 +10,7 @@ import PeopleOutlinedIcon from "@mui/icons-material/PeopleOutlined";
 import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
-
+import BusinessIcon from "@mui/icons-material/Business";
 import MenuOutlinedIcon from "@mui/icons-material/MenuOutlined";
 
 
@@ -174,7 +174,20 @@ const Sidebar = () => {
             >
               Datos
             </Typography>
-
+            <Typography
+            variant="h6"
+            color={colors.grey[300]}
+            sx={{ m: "15px 0 5px 20px" }}
+          >
+            Company
+          </Typography>
+          <Item
+            title="Company Components"
+            to="/company-components"
+            icon={<BusinessIcon />}
+            selected={selected}
+            setSelected={setSelected}
+          />
           </Box>
         </Menu>
       </ProSidebar>

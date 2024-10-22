@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import pytz
 from flask_cors import CORS, cross_origin
 import uuid
+from sqlalchemy.exc import IntegrityError
 import logging
 import json
 
@@ -405,7 +406,45 @@ class ControllerConfig(Resource):
         response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
         response.headers.add('Access-Control-Allow-Origin', 'http://localhost:5173')
         return response
-    
+
+
+
+
+@ns_dashboard.route('/empresa/<string:empresa_id>/components')
+class CompanyComponents(Resource):
+    @ns_dashboard.doc('get_company_components')
+    def get(self, empresa_id):
+        """Fetch all components (controllers) for a company"""
+        try:
+            with current_app.db_factory() as session:
+                empresa = session.query(Empresa).filter_by(id=empresa_id).first()
+                if not empresa:
+                    return {"error": "Company not found"}, 404
+
+                controladores = session.query(Controlador).filter_by(empresa_id=empresa_id).all()
+                
+                components = []
+                for controlador in controladores:
+                    last_signal = session.query(Signal).filter_by(controlador_id=controlador.id).order_by(Signal.tstamp.desc()).first()
+                    components.append({
+                        "id": controlador.id,
+                        "name": controlador.name,
+                        "config": controlador.config,
+                        "last_signal": last_signal.to_dict() if last_signal else None
+                    })
+
+                return {
+                    "company_name": empresa.name,
+                    "components": components
+                }
+        except SQLAlchemyError as e:
+            return handle_database_error(e)
+        except Exception as e:
+            current_app.logger.error(f"Unexpected error: {str(e)}")
+            return {"error": "An unexpected error occurred. Please try again later."}, 500
+
+
+
 def controlador_changes(session, controlador_id, limit=3):
     controlador_signals = session.query(Signal).filter_by(controlador_id=controlador_id).order_by(Signal.tstamp.desc()).limit(limit).all()
     changed_signals = []
@@ -435,6 +474,289 @@ def controlador_changes(session, controlador_id, limit=3):
             previous_values = current_values
 
     return changed_signals
+
+# Add this to your dashboard.py file
+
+
+
+@ns_controlador.route('/<string:controlador_id>/uptime-downtime')
+class ControllerUptimeDowntime(Resource):
+    @ns_controlador.doc('get_controller_uptime_downtime')
+    def get(self, controlador_id):
+        """Fetch uptime/downtime data for a specific controller"""
+        try:
+            with current_app.db_factory() as session:
+                controlador = session.query(Controlador).filter_by(id=controlador_id).first()
+                if not controlador:
+                    return {"error": "Controller not found"}, 404
+
+                utc = pytz.UTC
+                end_date = datetime.now(utc)
+                start_date = end_date - timedelta(days=7)  # Get data for the last week
+                if 'start_date' in request.args:
+                    start_date = datetime.fromisoformat(request.args['start_date']).replace(tzinfo=utc)
+                if 'end_date' in request.args:
+                    end_date = datetime.fromisoformat(request.args['end_date']).replace(tzinfo=utc)
+
+                signals = session.query(Signal).filter(
+                    Signal.controlador_id == controlador_id,
+                    Signal.tstamp.between(start_date, end_date)
+                ).order_by(Signal.tstamp).all()
+
+                daily_activity = {}
+                current_date = start_date.date()
+                while current_date <= end_date.date():
+                    daily_activity[current_date.isoformat()] = []
+                    current_date += timedelta(days=1)
+
+                current_state = 'off'
+                last_signal_time = start_date
+
+                for signal in signals:
+                    signal_time = signal.tstamp.replace(tzinfo=utc)
+                    signal_date = signal_time.date().isoformat()
+
+                    # If there's a gap of more than 5 minutes, add an 'off' interval
+                    if (signal_time - last_signal_time).total_seconds() > 300:
+                        if current_state == 'on':
+                            self.add_interval(daily_activity, last_signal_time, last_signal_time + timedelta(seconds=300), 'on')
+                            self.add_interval(daily_activity, last_signal_time + timedelta(seconds=300), signal_time, 'off')
+                        else:
+                            self.add_interval(daily_activity, last_signal_time, signal_time, 'off')
+                        current_state = 'on'
+                    elif current_state == 'off':
+                        current_state = 'on'
+
+                    last_signal_time = signal_time
+
+                # Add the final interval
+                if current_state == 'on':
+                    self.add_interval(daily_activity, last_signal_time, min(last_signal_time + timedelta(seconds=300), end_date), 'on')
+                    if last_signal_time + timedelta(seconds=300) < end_date:
+                        self.add_interval(daily_activity, last_signal_time + timedelta(seconds=300), end_date, 'off')
+                else:
+                    self.add_interval(daily_activity, last_signal_time, end_date, 'off')
+
+                # Fill start of day if needed
+                for date, activities in daily_activity.items():
+                    if activities and activities[0]['start_time'] != '00:00:00':
+                        activities.insert(0, {
+                            'start_time': '00:00:00',
+                            'end_time': activities[0]['start_time'],
+                            'state': 'off'
+                        })
+
+                return {
+                    "controller_name": controlador.name,
+                    "daily_activity": daily_activity
+                }
+
+        except SQLAlchemyError as e:
+            return handle_database_error(e)
+        except Exception as e:
+            current_app.logger.error(f"Unexpected error: {str(e)}")
+            return {"error": "An unexpected error occurred. Please try again later."}, 500
+
+    def add_interval(self, daily_activity, start_time, end_time, state):
+        start_date = start_time.date().isoformat()
+        end_date = end_time.date().isoformat()
+
+        if start_date == end_date:
+            daily_activity[start_date].append({
+                'start_time': start_time.time().isoformat(),
+                'end_time': end_time.time().isoformat(),
+                'state': state
+            })
+        else:
+            # Split interval across days
+            daily_activity[start_date].append({
+                'start_time': start_time.time().isoformat(),
+                'end_time': '23:59:59',
+                'state': state
+            })
+            current_date = start_time.date() + timedelta(days=1)
+            while current_date < end_time.date():
+                daily_activity[current_date.isoformat()].append({
+                    'start_time': '00:00:00',
+                    'end_time': '23:59:59',
+                    'state': state
+                })
+                current_date += timedelta(days=1)
+            daily_activity[end_date].append({
+                'start_time': '00:00:00',
+                'end_time': end_time.time().isoformat(),
+                'state': state
+            })
+
+            
+@ns_controlador.route('/<string:controlador_id>/operational-hours')
+class ControllerOperationalHours(Resource):
+    @ns_controlador.doc('get_controller_operational_hours')
+    def get(self, controlador_id):
+        """Fetch operational hours data for a specific controller"""
+        try:
+            with current_app.db_factory() as session:
+                controlador = session.query(Controlador).filter_by(id=controlador_id).first()
+                if not controlador:
+                    return {"error": "Controller not found"}, 404
+
+                end_date = datetime.now()
+                start_date = end_date - timedelta(days=7)  # Get data for the last week
+                if 'start_date' in request.args:
+                    start_date = datetime.fromisoformat(request.args['start_date'])
+                if 'end_date' in request.args:
+                    end_date = datetime.fromisoformat(request.args['end_date'])
+
+                signals = session.query(Signal).filter(
+                    Signal.controlador_id == controlador_id,
+                    Signal.tstamp.between(start_date, end_date)
+                ).order_by(Signal.tstamp).all()
+
+                heatmap_data = {}
+                current_date = start_date.date()
+                while current_date <= end_date.date():
+                    heatmap_data[current_date.isoformat()] = [0] * 24
+                    current_date += timedelta(days=1)
+
+                for signal in signals:
+                    signal_date = signal.tstamp.date()
+                    signal_hour = signal.tstamp.hour
+
+                    # Check if any sensor is active based on the configuration
+                    is_active = any(
+                        (config['tipo'] == 'NA' and getattr(signal, sensor_key)) or
+                        (config['tipo'] == 'NC' and not getattr(signal, sensor_key))
+                        for sensor_key, config in controlador.config.items()
+                    )
+
+                    if is_active:
+                        heatmap_data[signal_date.isoformat()][signal_hour] += 5  # Increment by 5 minutes
+
+                return {
+                    "controller_name": controlador.name,
+                    "heatmap_data": heatmap_data,
+                    "sensor_config": controlador.config
+                }
+
+        except SQLAlchemyError as e:
+            return handle_database_error(e)
+        except Exception as e:
+            current_app.logger.error(f"Unexpected error: {str(e)}")
+            return {"error": "An unexpected error occurred. Please try again later."}, 500
+
+@ns_dashboard.route('/controlador')
+class AddControlador(Resource):
+    @ns_dashboard.doc('add_controlador')
+    @ns_dashboard.expect(api.model('NewControlador', {
+        'name': fields.String(required=True, description='Controller name'),
+        'id': fields.String(required=True, description='Controller ID'),
+        'empresa_id': fields.String(required=True, description='Company ID'),
+        'config': fields.Raw(required=True, description='Controller configuration')
+    }))
+    def post(self):
+        """Add a new controller"""
+        data = request.json
+        try:
+            with current_app.db_factory() as session:
+                empresa = session.query(Empresa).get(data['empresa_id'])
+                if not empresa:
+                    return {'message': 'Company not found'}, 404
+
+                new_controlador = Controlador(
+                    id=data['id'],
+                    name=data['name'],
+                    empresa_id=data['empresa_id'],
+                    config=data['config']  # Use the config from the request
+                )
+                session.add(new_controlador)
+                session.commit()
+                return new_controlador.to_dict(), 201
+        except IntegrityError:
+            return {'message': 'Controller ID already exists'}, 400
+        except SQLAlchemyError as e:
+            return handle_database_error(e)
+        except Exception as e:
+            current_app.logger.error(f"Unexpected error: {str(e)}")
+            return {'message': 'An unexpected error occurred'}, 500
+
+def handle_database_error(e):
+    current_app.logger.error(f"Database error: {str(e)}")
+    return {'message': 'A database error occurred'}, 500
+
+
+
+
+
+@ns_controlador.route('/<string:controlador_id>/timeline')
+class ControllerTimeline(Resource):
+    @ns_controlador.doc('get_controller_timeline')
+    def get(self, controlador_id):
+        """Fetch activity data for a specific controller"""
+        try:
+            with current_app.db_factory() as session:
+                controlador = session.query(Controlador).filter_by(id=controlador_id).first()
+                if not controlador:
+                    return {"error": "Controller not found"}, 404
+
+                end_date = datetime.now()
+                start_date = end_date - timedelta(days=7)  # Get data for the last week
+                if 'start_date' in request.args:
+                    start_date = datetime.fromisoformat(request.args['start_date'])
+                if 'end_date' in request.args:
+                    end_date = datetime.fromisoformat(request.args['end_date'])
+
+                signals = session.query(Signal).filter(
+                    Signal.controlador_id == controlador_id,
+                    Signal.tstamp.between(start_date, end_date)
+                ).order_by(Signal.tstamp).all()
+
+                daily_activity = {}
+                heatmap_data = {}
+                current_date = start_date.date()
+                while current_date <= end_date.date():
+                    daily_activity[current_date.isoformat()] = []
+                    heatmap_data[current_date.isoformat()] = [0] * 24
+                    current_date += timedelta(days=1)
+
+                last_signal_time = None
+                for signal in signals:
+                    signal_date = signal.tstamp.date()
+                    signal_hour = signal.tstamp.hour
+
+                    if last_signal_time and (signal.tstamp - last_signal_time).total_seconds() > 300:
+                        # Add a downtime period
+                        daily_activity[signal_date.isoformat()].append({
+                            "start": last_signal_time.isoformat(),
+                            "end": signal.tstamp.isoformat(),
+                            "status": "downtime"
+                        })
+                    else:
+                        # Increment the active minutes for this hour
+                        heatmap_data[signal_date.isoformat()][signal_hour] += 5
+
+                    # Add an uptime period
+                    daily_activity[signal_date.isoformat()].append({
+                        "start": signal.tstamp.isoformat(),
+                        "end": (signal.tstamp + timedelta(minutes=5)).isoformat(),
+                        "status": "uptime"
+                    })
+
+                    last_signal_time = signal.tstamp
+
+                return {
+                    "controller_name": controlador.name,
+                    "daily_activity": daily_activity,
+                    "heatmap_data": heatmap_data
+                }
+
+        except SQLAlchemyError as e:
+            return handle_database_error(e)
+        except Exception as e:
+            current_app.logger.error(f"Unexpected error: {str(e)}")
+            return {"error": "An unexpected error occurred. Please try again later."}, 500
+        
+
+
 
 def is_controlador_connected(controlador, session):
     try:

@@ -1,6 +1,7 @@
-from flask import Blueprint, request, jsonify
-from app import socketio
+from flask import Blueprint, request, jsonify, current_app
+from ..socket_events import handle_update_controladores
 import logging
+
 
 webhook_bp = Blueprint('webhook', __name__)
 logger = logging.getLogger(__name__)
@@ -23,7 +24,8 @@ def webhook_update():
             return jsonify({"error": "Invalid data format"}), 400
 
         logger.info(f"Attempting to emit 'update_controladores' event for controlador {controlador_id}")
-        socketio.emit('update_controladores', data, namespace='/')
+        socketio = current_app.extensions['socketio']
+        handle_update_controladores(data)
         logger.info(f"Emission attempt completed for controlador {controlador_id}")
 
         # Get connected clients

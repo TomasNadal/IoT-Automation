@@ -41,4 +41,4 @@ def send_data(num_controladores, interval):
             time.sleep(interval)
 
 if __name__ == '__main__':
-    send_data(NUM_CONTROLADORES, INTERVAL)
+    send_data(NUM_CONTROLADORES, INTERVAL) 
