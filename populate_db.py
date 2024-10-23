@@ -5,12 +5,100 @@ from app.models import Empresa, Controlador, Signal
 from datetime import datetime, timedelta, timezone
 import random
 import string
+import json
 
 def generate_unique_phone(session):
     while True:
         phone = "+34" + ''.join(random.choices(string.digits, k=9))
         if not session.query(Controlador).filter_by(id=phone).first():
             return phone
+
+def get_base_config():
+    return {
+        "value_sensor1": {"name": "Lleno", "email": True, "tipo": "NA"},
+        "value_sensor2": {"name": "Aceite", "email": False, "tipo": "NA"},
+        "value_sensor3": {"name": "Magnetotérmico", "email": False, "tipo": "NA"},
+        "value_sensor4": {"name": "Marcha", "email": False, "tipo": "NC"},
+        "value_sensor5": {"name": "Listo", "email": False, "tipo": "NA"},
+        "value_sensor6": {"name": "Temperatura", "email": False, "tipo": "NC"}
+    }
+
+def generate_cycle_signals(controlador_id, cycle_start):
+    """Genera señales para un ciclo completo de procesamiento"""
+    signals = []
+    current_time = cycle_start
+    
+    # Estado inicial: todos los sensores apagados
+    base_state = {
+        "value_sensor1": False,  # Lleno
+        "value_sensor2": False,  # Aceite
+        "value_sensor3": False,  # Magnetotérmico
+        "value_sensor4": True,   # Marcha (NC)
+        "value_sensor5": False,  # Listo
+        "value_sensor6": True    # Temperatura (NC)
+    }
+
+    # 1. Máquina lista para empezar
+    signals.append(Signal(
+        controlador_id=controlador_id,
+        tstamp=current_time,
+        value_sensor1=False,
+        value_sensor2=False,
+        value_sensor3=False,
+        value_sensor4=True,
+        value_sensor5=True,  # Listo se activa
+        value_sensor6=True
+    ))
+
+    # 2. Inicio del ciclo
+    current_time += timedelta(minutes=random.randint(2, 5))
+    signals.append(Signal(
+        controlador_id=controlador_id,
+        tstamp=current_time,
+        value_sensor1=False,
+        value_sensor2=False,
+        value_sensor3=False,
+        value_sensor4=False,  # Marcha se activa (NC -> False significa activo)
+        value_sensor5=True,
+        value_sensor6=True
+    ))
+
+    # 3. Señales durante el proceso
+    cycle_duration = timedelta(hours=random.uniform(6.5, 8.5))
+    process_end = current_time + cycle_duration
+    
+    while current_time < process_end:
+        current_time += timedelta(minutes=5)
+        
+        # Posibilidad de eventos aleatorios
+        temp_warning = random.random() < 0.02  # 2% de probabilidad
+        oil_warning = random.random() < 0.01   # 1% de probabilidad
+        
+        signals.append(Signal(
+            controlador_id=controlador_id,
+            tstamp=current_time,
+            value_sensor1=False,
+            value_sensor2=oil_warning,
+            value_sensor3=False,
+            value_sensor4=False,  # Marcha activa
+            value_sensor5=True,   # Listo activo
+            value_sensor6=not temp_warning  # Temperatura (NC)
+        ))
+
+    # 4. Fin del ciclo - Lleno
+    current_time = process_end
+    signals.append(Signal(
+        controlador_id=controlador_id,
+        tstamp=current_time,
+        value_sensor1=True,   # Lleno
+        value_sensor2=False,
+        value_sensor3=False,
+        value_sensor4=True,   # Marcha se detiene
+        value_sensor5=False,  # Ya no está listo
+        value_sensor6=True
+    ))
+
+    return signals
 
 def populate_db():
     app = create_app('production_transaction')
@@ -19,7 +107,7 @@ def populate_db():
         session = app.db_factory()
 
         try:
-            # Check and create empresas
+            # Create empresas
             empresa_names = ["Empresa A", "Empresa B", "Empresa C"]
             empresas = []
             for name in empresa_names:
@@ -36,44 +124,61 @@ def populate_db():
             # Create controladores
             for empresa in empresas:
                 existing_controladores = session.query(Controlador).filter_by(empresa_id=empresa.id).count()
+                new_controladores = []
                 for i in range(2 - existing_controladores):
                     phone = generate_unique_phone(session)
                     controlador = Controlador(
-                        id=phone, 
-                        name=f"Controlador {existing_controladores + i + 1} de {empresa.name}", 
-                        empresa_id=empresa.id
+                        id=phone,
+                        name=f"Controlador {existing_controladores + i + 1} de {empresa.name}",
+                        empresa_id=empresa.id,
+                        config=get_base_config()
                     )
                     session.add(controlador)
+                    new_controladores.append(controlador)
                     print(f"Created new controlador: {controlador.name} with phone {phone}")
-            session.commit()
+                session.commit()
 
-            # Create signals
+            # Create realistic signals for the past week
             controladores = session.query(Controlador).all()
-            now = datetime.now()
-            for controlador in controladores:
-                existing_signals = session.query(Signal).filter_by(controlador_id=controlador.id).count()
-                signals = []
-                for i in range(100 - existing_signals):  # Ensure 100 signals per controlador
-                    signal = Signal(
-                        controlador_id=controlador.id,
-                        tstamp=now - timedelta(minutes=i*5),
-                        value_sensor1=random.choice([True, False]),
-                        value_sensor2=random.choice([True, False]),
-                        value_sensor3=random.choice([True, False]),
-                        value_sensor4=random.choice([True, False]),
-                        value_sensor5=random.choice([True, False]),
-                        value_sensor6=random.choice([True, False])
-                    )
-                    signals.append(signal)
-                session.add_all(signals)
-                print(f"Created {len(signals)} new signals for controlador {controlador.id}")
-            session.commit()
+            end_date = datetime.now(timezone.utc)
+            start_date = end_date - timedelta(days=7)
 
-            print("Database population completed successfully!")
+            for controlador in controladores:
+                print(f"\nGenerating signals for controlador: {controlador.name}")
+                current_time = start_date
+                signals_count = 0
+
+                while current_time < end_date:
+                    # Generate one complete cycle
+                    cycle_signals = generate_cycle_signals(controlador.id, current_time)
+                    
+                    for signal in cycle_signals:
+                        session.add(signal)
+                        signals_count += 1
+                        
+                        # Commit every 100 signals to manage memory
+                        if signals_count % 100 == 0:
+                            session.commit()
+                            print(f"Committed {signals_count} signals for {controlador.name}")
+                    
+                    # Move to next cycle start time
+                    last_signal_time = cycle_signals[-1].tstamp
+                    
+                    # Add random maintenance break (5% chance)
+                    if random.random() < 0.05:
+                        current_time = last_signal_time + timedelta(hours=random.randint(2, 4))
+                    else:
+                        current_time = last_signal_time + timedelta(minutes=random.randint(30, 60))
+
+                session.commit()
+                print(f"Generated {signals_count} total signals for {controlador.name}")
+
+            print("\nDatabase population completed successfully!")
 
         except Exception as e:
             session.rollback()
             print(f"An error occurred: {str(e)}")
+            raise
         finally:
             session.close()
 

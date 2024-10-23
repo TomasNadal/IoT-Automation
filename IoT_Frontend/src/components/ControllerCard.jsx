@@ -47,7 +47,7 @@ const ControllerCard = ({ controller, onUpdateController }) => {
           </Typography>
           <Chip
             icon={isConnected(controller.last_signal) ? <SignalCellularAltIcon /> : <SignalCellularOffIcon />}
-            label={isConnected(controller.last_signal) ? "Connected" : "Disconnected"}
+            label={isConnected(controller.last_signal) ? "Conectado" : "Desconectado"}
             color={isConnected(controller.last_signal) ? "success" : "error"}
             size="small"
           />
@@ -56,10 +56,10 @@ const ControllerCard = ({ controller, onUpdateController }) => {
           ID: {controller.id}
         </Typography>
         <Typography variant="body2" color={colors.grey[100]} mb={2}>
-          Last Signal: {controller.last_signal ? new Date(controller.last_signal.tstamp).toLocaleString() : 'N/A'}
+          Ultima señal: {controller.last_signal ? new Date(controller.last_signal.tstamp).toLocaleString() : 'N/A'}
         </Typography>
         <Typography variant="body2" color={colors.grey[100]} mb={1}>
-          Sensor Configuration:
+          Configuracion del sensor:
         </Typography>
         <Grid container spacing={1}>
           {Object.entries(controller.config).map(([key, value]) => (

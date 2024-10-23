@@ -11,6 +11,7 @@ import uuid
 from sqlalchemy.exc import IntegrityError
 import logging
 import json
+from ..services.service_analytics import CycleAnalyticsService
 
 dashboard = Blueprint('dashboard', __name__)
 CORS(dashboard)
@@ -108,6 +109,9 @@ config_model = api.model('Config', {
 class DashboardTest(Resource):
     def get(self):
         return json.dumps({"Hey":200})
+
+
+
 
 
 
@@ -509,42 +513,70 @@ class ControllerUptimeDowntime(Resource):
                     daily_activity[current_date.isoformat()] = []
                     current_date += timedelta(days=1)
 
+                if not signals:
+                    # If no signals, mark entire period as off
+                    self.add_interval(daily_activity, start_date, end_date, 'off')
+                    return {
+                        "controller_name": controlador.name,
+                        "daily_activity": daily_activity
+                    }
+
+                # Initialize with first interval if needed
+                if signals[0].tstamp > start_date:
+                    self.add_interval(daily_activity, start_date, signals[0].tstamp, 'off')
+
+                # Process signals
                 current_state = 'off'
-                last_signal_time = start_date
+                last_signal_time = signals[0].tstamp
 
-                for signal in signals:
+                for i in range(len(signals)):
+                    signal = signals[i]
                     signal_time = signal.tstamp.replace(tzinfo=utc)
-                    signal_date = signal_time.date().isoformat()
-
-                    # If there's a gap of more than 5 minutes, add an 'off' interval
-                    if (signal_time - last_signal_time).total_seconds() > 300:
+                    
+                    # Determine if this is a state change that requires a new interval
+                    time_gap = (signal_time - last_signal_time).total_seconds()
+                    
+                    if time_gap > 300:  # 5-minute gap indicates disconnection
                         if current_state == 'on':
-                            self.add_interval(daily_activity, last_signal_time, last_signal_time + timedelta(seconds=300), 'on')
-                            self.add_interval(daily_activity, last_signal_time + timedelta(seconds=300), signal_time, 'off')
+                            # Add the active period and the gap
+                            self.add_interval(daily_activity, last_signal_time, 
+                                           last_signal_time + timedelta(seconds=300), 'on')
+                            self.add_interval(daily_activity, 
+                                           last_signal_time + timedelta(seconds=300),
+                                           signal_time, 'off')
                         else:
+                            # Just add the gap as off time
                             self.add_interval(daily_activity, last_signal_time, signal_time, 'off')
+                        
+                        # Start new on period
                         current_state = 'on'
-                    elif current_state == 'off':
-                        current_state = 'on'
+                    elif i == 0 or time_gap > 0:  # Only add non-duplicate timestamps
+                        if current_state == 'off':
+                            current_state = 'on'
+                            # Start new on period
+                            self.add_interval(daily_activity, signal_time, 
+                                           signal_time + timedelta(seconds=300), 'on')
 
                     last_signal_time = signal_time
 
-                # Add the final interval
+                # Handle final interval
+                final_time = min(end_date, last_signal_time + timedelta(seconds=300))
                 if current_state == 'on':
-                    self.add_interval(daily_activity, last_signal_time, min(last_signal_time + timedelta(seconds=300), end_date), 'on')
-                    if last_signal_time + timedelta(seconds=300) < end_date:
-                        self.add_interval(daily_activity, last_signal_time + timedelta(seconds=300), end_date, 'off')
-                else:
-                    self.add_interval(daily_activity, last_signal_time, end_date, 'off')
+                    self.add_interval(daily_activity, last_signal_time, final_time, 'on')
+                if final_time < end_date:
+                    self.add_interval(daily_activity, final_time, end_date, 'off')
 
-                # Fill start of day if needed
-                for date, activities in daily_activity.items():
-                    if activities and activities[0]['start_time'] != '00:00:00':
-                        activities.insert(0, {
-                            'start_time': '00:00:00',
-                            'end_time': activities[0]['start_time'],
-                            'state': 'off'
-                        })
+                # Merge consecutive intervals with same state
+                for date in daily_activity:
+                    merged = []
+                    for activity in daily_activity[date]:
+                        if (not merged or 
+                            merged[-1]['state'] != activity['state'] or 
+                            self._time_diff(merged[-1]['end_time'], activity['start_time']) > 1):
+                            merged.append(activity)
+                        else:
+                            merged[-1]['end_time'] = activity['end_time']
+                    daily_activity[date] = merged
 
                 return {
                     "controller_name": controlador.name,
@@ -558,6 +590,7 @@ class ControllerUptimeDowntime(Resource):
             return {"error": "An unexpected error occurred. Please try again later."}, 500
 
     def add_interval(self, daily_activity, start_time, end_time, state):
+        """Add an interval to the daily activity, handling cross-day intervals"""
         start_date = start_time.date().isoformat()
         end_date = end_time.date().isoformat()
 
@@ -574,6 +607,7 @@ class ControllerUptimeDowntime(Resource):
                 'end_time': '23:59:59',
                 'state': state
             })
+            
             current_date = start_time.date() + timedelta(days=1)
             while current_date < end_time.date():
                 daily_activity[current_date.isoformat()].append({
@@ -582,12 +616,34 @@ class ControllerUptimeDowntime(Resource):
                     'state': state
                 })
                 current_date += timedelta(days=1)
+            
             daily_activity[end_date].append({
                 'start_time': '00:00:00',
                 'end_time': end_time.time().isoformat(),
                 'state': state
             })
 
+    def _time_diff(self, time1_str, time2_str):
+        """Calculate difference between two time strings in seconds"""
+        t1 = datetime.strptime(time1_str, '%H:%M:%S.%f' if '.' in time1_str else '%H:%M:%S')
+        t2 = datetime.strptime(time2_str, '%H:%M:%S.%f' if '.' in time2_str else '%H:%M:%S')
+        return abs((t2 - t1).total_seconds())
+
+
+@ns_controlador.route('/<string:controlador_id>/analytics')
+class ControllerAnalytics(Resource):
+    @ns_controlador.doc('get_controller_analytics')  # Changed from @dashboard.doc to @ns_controlador.doc
+    def get(self, controlador_id):
+        try:
+            days = request.args.get('days', 7, type=int)
+            with current_app.db_factory() as session:
+                analytics_service = CycleAnalyticsService(session)
+                analytics = analytics_service.get_cycle_analytics(controlador_id, days)
+                if not analytics:
+                    return {"error": "No data available"}, 404
+                return analytics
+        except Exception as e:
+            return {"error": str(e)}, 500
             
 @ns_controlador.route('/<string:controlador_id>/operational-hours')
 class ControllerOperationalHours(Resource):

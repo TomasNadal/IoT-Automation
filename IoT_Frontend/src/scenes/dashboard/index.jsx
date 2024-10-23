@@ -14,6 +14,8 @@ import ControladoresList from '../controladoresList/ControladoresList';
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
 import WarningIcon from '@mui/icons-material/Warning';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 
 const isControllerConnected = (controller) => {
   if (!controller.last_signal) return false;
@@ -27,21 +29,76 @@ const EnhancedDashboardOverview = () => {
   const colors = tokens(theme.palette.mode);
   const { controladores } = useContext(DataContext);
   const { isConnected } = useContext(WebSocketContext);
+  const [triggeredAlerts, setTriggeredAlerts] = useState([]);
   const [allRecentChanges, setAllRecentChanges] = useState([]);
 
+
+  useEffect(() => {
+    const fetchTriggeredAlerts = async () => {
+      try {
+        const alertLogPromises = controladores.map(controller =>
+          axios.get(`http://localhost:5000/alerts/controlador/${controller.id}/alert-logs`, {
+            params: {
+              // Get recent logs, for example last 5 minutes
+              limit: 100
+            }
+          })
+        );
+        
+        const responses = await Promise.all(alertLogPromises);
+        const recentLogs = responses.flatMap(response => response.data?.logs || []);
+        
+        // Group by alert ID to avoid counting the same alert multiple times
+        const activeAlertGroups = recentLogs.reduce((groups, log) => {
+          const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+          const logTime = new Date(log.triggered_at);
+          
+          // Only count alerts from the last 5 minutes
+          if (logTime > fiveMinutesAgo) {
+            if (!groups[log.aviso_id]) {
+              groups[log.aviso_id] = {
+                ...log,
+                count: 1,
+                latestTrigger: logTime
+              };
+            } else if (logTime > new Date(groups[log.aviso_id].latestTrigger)) {
+              groups[log.aviso_id].latestTrigger = logTime;
+              groups[log.aviso_id].count++;
+            }
+          }
+          return groups;
+        }, {});
+
+        setTriggeredAlerts(Object.values(activeAlertGroups));
+      } catch (error) {
+        console.error('Error fetching alert logs:', error);
+      }
+    };
+
+    fetchTriggeredAlerts();
+    
+    // Set up a polling interval to refresh triggered alerts
+    const intervalId = setInterval(fetchTriggeredAlerts, 30000); // Poll every 30 seconds
+    
+    return () => clearInterval(intervalId);
+  }, [controladores]);
+
+
+  
+
+  // Calculate stats with active alerts
   const calculateStats = useCallback(() => {
     const totalControllers = controladores.length;
     const connectedControllers = controladores.filter(isControllerConnected).length;
     const disconnectedControllers = totalControllers - connectedControllers;
-    const activeAlerts = disconnectedControllers;
-
+    
     return {
       totalControllers,
       connectedControllers,
       disconnectedControllers,
-      activeAlerts
+      activeAlertsCount: triggeredAlerts.length
     };
-  }, [controladores]);
+  }, [controladores, triggeredAlerts]);
 
   const stats = useMemo(() => calculateStats(), [calculateStats]);
 
@@ -131,16 +188,50 @@ const EnhancedDashboardOverview = () => {
         <Grid item xs={12} sm={6} md={4}>
           <Box
             backgroundColor={colors.primary[400]}
+            display="block"
             p={2}
             borderRadius="4px"
             width="100%"
+            height="100%"
+            component={Link}
+            to="/alerts"
+            sx={{
+              textDecoration: 'none',
+              transition: 'transform 0.2s',
+              boxShadow: `0px 2px 4px -1px ${colors.primary[900]}`,
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: `0px 4px 8px -2px ${colors.primary[900]}`,
+              },
+              '@keyframes pulse': {
+                '0%': {
+                  transform: 'scale(1)',
+                },
+                '50%': {
+                  transform: 'scale(1.1)',
+                },
+                '100%': {
+                  transform: 'scale(1)',
+                },
+              },
+            }}
           >
             <StatBox
-              title={stats.activeAlerts.toString()}
+              title={stats.activeAlertsCount.toString()}
               subtitle="Alertas Activas"
-              progress={stats.totalControllers > 0 ? stats.activeAlerts / stats.totalControllers : 0}
-              increase={`${Math.round((stats.activeAlerts / stats.totalControllers) * 100)}%`}
-              icon={<WarningIcon sx={{ color: colors.redAccent[600], fontSize: "26px" }} />}
+              progress={stats.totalControllers > 0 ? stats.activeAlertsCount / stats.totalControllers : 0}
+              increase={triggeredAlerts.length > 0 ? 
+                `${triggeredAlerts.reduce((sum, alert) => sum + alert.count, 0)} activaciones` : 
+                'Sin alertas activas'}
+              icon={
+                <NotificationsActiveIcon 
+                  sx={{ 
+                    color: colors.redAccent[600], 
+                    fontSize: "26px",
+                    animation: triggeredAlerts.length > 0 ? 'pulse 2s infinite' : 'none'
+                  }} 
+                />
+              }
             />
           </Box>
         </Grid>
@@ -201,30 +292,6 @@ const EnhancedDashboardOverview = () => {
           </Box>
         </Grid>
 
-        <Grid item xs={12} md={8}>
-          <Box
-            backgroundColor={colors.primary[400]}
-            p={2}
-            borderRadius="4px"
-            width="100%"
-            height="100%"
-          >
-            <ResourceUsageGraph controladores={controladores} />
-          </Box>
-        </Grid>
-
-        {/* Map Section */}
-        <Grid item xs={12}>
-          <Box
-            backgroundColor={colors.primary[400]}
-            p={2}
-            borderRadius="4px"
-            width="100%"
-            height="400px"
-          >
-            <ControllerMap controladores={controladores} />
-          </Box>
-        </Grid>
       </Grid>
     </Box>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, useTheme } from '@mui/material';
-import { tokens } from '../theme';
+import { tokens } from '../../theme';
 import axios from 'axios';
 import { Tooltip } from 'react-tooltip';
 

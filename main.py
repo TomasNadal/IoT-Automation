@@ -4,7 +4,6 @@ eventlet.monkey_patch()
 import os
 from flask import Flask
 from app import create_app, socketio
-from app.logging_config import setup_logging
 import logging
 import sys
 
@@ -18,7 +17,6 @@ def create_and_configure_app(config_name):
         logger.error(f"Error: Application could not be created with config: {config_name}")
         return None
 
-    setup_logging(app)
 
     @app.after_request
     def after_request(response):

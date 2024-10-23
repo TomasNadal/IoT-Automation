@@ -26,6 +26,9 @@ const QuickActionButtons = () => {
       // You might want to show an error message to the user here
     }
   };
+  const handleAlerts = () => {
+      navigate(`/alerts`);
+  };
 
   return (
     <Box
@@ -51,16 +54,11 @@ const QuickActionButtons = () => {
           variant="contained"
           startIcon={<WarningIcon />}
           style={{ backgroundColor: colors.redAccent[700], color: colors.grey[100] }}
+          onClick={handleAlerts}
         >
-          Ver todas las Alertas
+          Configurar alertas
         </Button>
-        <Button
-          variant="contained"
-          startIcon={<SettingsIcon />}
-          style={{ backgroundColor: colors.greenAccent[700], color: colors.grey[100] }}
-        >
-          System Settings
-        </Button>
+
       </Box>
     </Box>
   );

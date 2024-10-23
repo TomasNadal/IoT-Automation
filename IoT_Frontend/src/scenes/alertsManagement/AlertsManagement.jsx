@@ -29,6 +29,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
+import { CircularProgress } from '@mui/material';
 
 const AlertsManagement = () => {
   const theme = useTheme();
@@ -51,32 +52,40 @@ const AlertsManagement = () => {
       sensor_name: '',
       conditions: [
         {
-          from_state: false,
-          to_state: true,
+          from_state: 'Off',  // Changed from boolean to string
+          to_state: 'On',     // Changed from boolean to string
           notify_web: true
         }
       ]
     }
   });
 
+  const [selectedSensorType, setSelectedSensorType] = useState('NA'); // Track sensor type
   // Cargar alertas existentes
   const loadAlerts = async () => {
+    setLoading(true);
+    setError('');
     try {
       const alertPromises = controladores.map(controller =>
-        axios.get(`http://localhost:5000/front/controlador/${controller.id}/alerts`)
+        axios.get(`http://localhost:5000/alerts/controlador/${controller.id}/alerts`)
       );
       const responses = await Promise.all(alertPromises);
-      const allAlerts = responses.flatMap(response => response.data.alerts || []);
+      const allAlerts = responses.flatMap(response => response.data?.alerts || []);
       setAlerts(allAlerts);
     } catch (error) {
-      console.error('Error al cargar alertas:', error);
-      setError('Error al cargar las alertas');
+      console.error('Error loading alerts:', error);
+      setError('Error loading alerts. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
+// Add this effect to load alerts when controllers change
+useEffect(() => {
+  if (controladores.length > 0) {
     loadAlerts();
-  }, [controladores]);
+  }
+}, [controladores]);
 
   // Escuchar eventos de websocket
   useEffect(() => {
@@ -144,41 +153,156 @@ const AlertsManagement = () => {
     return true;
   };
 
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
+
+  // Update sensor type when sensor is selected
+  const handleSensorChange = (e) => {
+    const sensorName = e.target.value;
+    let sensorType = 'NA';  // default
     
-    setLoading(true);
-    setError('');
-    try {
-      if (selectedAlert) {
-        await axios.put(`http://localhost:5000/alerts/alerts/${selectedAlert.id}`, formData);
-      } else {
-        await axios.post(`http://localhost:5000/alerts/controlador/${selectedController.id}/alerts`, {
-          ...formData,
-          controlador_id: selectedController.id
-        });
+    // Find sensor type from controller config
+    if (selectedController && selectedController.config) {
+      for (const [key, value] of Object.entries(selectedController.config)) {
+        if (value.name === sensorName) {
+          sensorType = value.tipo;
+          break;
+        }
       }
-      setOpenDialog(false);
-      loadAlerts(); // Recargar las alertas
-    } catch (error) {
-      console.error('Error al guardar la alerta:', error);
-      setError('Error al guardar la alerta. Por favor, intente nuevamente.');
-    } finally {
-      setLoading(false);
     }
+
+    setSelectedSensorType(sensorType);
+    setFormData({
+      ...formData,
+      config: {
+        ...formData.config,
+        sensor_name: sensorName
+      }
+    });
   };
 
-  const handleDelete = async (alertId) => {
-    if (!window.confirm('¿Está seguro que desea eliminar esta alerta?')) return;
-    
-    try {
-      await axios.delete(`http://localhost:5000/alerts/alerts/${alertId}`);
-      setAlerts(prev => prev.filter(a => a.id !== alertId));
-    } catch (error) {
-      console.error('Error al eliminar la alerta:', error);
-      setError('Error al eliminar la alerta');
-    }
+  // Update the state transition selection
+  const handleStateTransitionChange = (fromState, toState) => {
+    setFormData({
+      ...formData,
+      config: {
+        ...formData.config,
+        conditions: [{
+          from_state: fromState,
+          to_state: toState,
+          notify_web: true
+        }]
+      }
+    });
   };
+
+  // Modify the dialog content to include state transition selection
+  const renderDialogContent = () => (
+    <Box py={2}>
+      <TextField
+        fullWidth
+        label="Nombre de la Alerta"
+        value={formData.name}
+        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+        margin="normal"
+        error={error.includes('nombre')}
+      />
+      <TextField
+        fullWidth
+        label="Descripción"
+        value={formData.description}
+        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+        margin="normal"
+        multiline
+        rows={2}
+      />
+      {selectedController && (
+        <>
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Sensor</InputLabel>
+            <Select
+              value={formData.config.sensor_name}
+              onChange={handleSensorChange}
+              error={error.includes('sensor')}
+            >
+              <MenuItem value="">Seleccione un sensor</MenuItem>
+              {Object.entries(selectedController.config).map(([key, value]) => (
+                <MenuItem key={key} value={value.name}>
+                  {value.name} ({value.tipo})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Condición de Activación</InputLabel>
+            <Select
+              value={`${formData.config.conditions[0].from_state}-${formData.config.conditions[0].to_state}`}
+              onChange={(e) => {
+                const [fromState, toState] = e.target.value.split('-');
+                handleStateTransitionChange(fromState, toState);
+              }}
+            >
+              <MenuItem value="Off-On">Cuando el sensor se activa (Off → On)</MenuItem>
+              <MenuItem value="On-Off">Cuando el sensor se desactiva (On → Off)</MenuItem>
+            </Select>
+          </FormControl>
+
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Tipo de Sensor: {selectedSensorType === 'NA' ? 'Normalmente Abierto' : 'Normalmente Cerrado'}
+          </Typography>
+        </>
+      )}
+      <FormControlLabel
+        control={
+          <Switch
+            checked={formData.is_active}
+            onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+          />
+        }
+        label={formData.is_active ? "Activa" : "Inactiva"}
+      />
+    </Box>
+  );
+
+// Update the URL in handleSubmit
+const handleSubmit = async () => {
+  if (!validateForm()) return;
+  
+  setLoading(true);
+  setError('');
+  try {
+    if (selectedAlert) {
+      await axios.put(`http://localhost:5000/alerts/${selectedAlert.id}`, formData);
+    } else {
+      await axios.post(`http://localhost:5000/alerts/controlador/${selectedController.id}/alerts`, {
+        ...formData,
+        controlador_id: selectedController.id
+      });
+    }
+    setOpenDialog(false);
+    await loadAlerts(); // Reload alerts after changes
+  } catch (error) {
+    console.error('Error saving alert:', error);
+    setError('Error saving alert. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Update the handleDelete function
+const handleDelete = async (alertId) => {
+  if (!window.confirm('Are you sure you want to delete this alert?')) return;
+  
+  setLoading(true);
+  try {
+    await axios.delete(`http://localhost:5000/alerts/${alertId}`);
+    await loadAlerts(); // Reload alerts after deletion
+  } catch (error) {
+    console.error('Error deleting alert:', error);
+    setError('Error deleting alert. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <Box m="20px">
@@ -193,22 +317,28 @@ const AlertsManagement = () => {
       
       <Grid container spacing={3}>
         {controladores.map(controller => (
-          <Grid item xs={12} key={controller.id}>
-            <Card sx={{ backgroundColor: colors.primary[400], marginBottom: 2 }}>
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Typography variant="h5" color={colors.greenAccent[500]}>
-                    {controller.name}
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => handleOpenDialog(controller)}
-                  >
-                    Nueva Alerta
-                  </Button>
-                </Box>
+        <Grid item xs={12} key={controller.id}>
+          <Card sx={{ backgroundColor: colors.primary[400], marginBottom: 2 }}>
+            <CardContent>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                <Typography variant="h5" color={colors.greenAccent[500]}>
+                  {controller.name}
+                </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => handleOpenDialog(controller)}
+                  disabled={loading}
+                >
+                  Nueva Alerta
+                </Button>
+              </Box>
 
+              {loading ? (
+                <Box display="flex" justifyContent="center" p={3}>
+                  <CircularProgress />
+                </Box>
+              ) : (
                 <Grid container spacing={2}>
                   {alerts
                     .filter(alert => alert.controlador_id === controller.id)
@@ -224,19 +354,24 @@ const AlertsManagement = () => {
                                 <IconButton
                                   onClick={() => handleOpenDialog(controller, alert)}
                                   size="small"
+                                  disabled={loading}
                                 >
                                   <EditIcon />
                                 </IconButton>
                                 <IconButton
                                   onClick={() => handleDelete(alert.id)}
                                   size="small"
+                                  disabled={loading}
                                 >
                                   <DeleteIcon />
                                 </IconButton>
                               </Box>
                             </Box>
                             <Typography variant="body2" color={colors.grey[300]}>
-                              {alert.description}
+                              {alert.description || 'No description'}
+                            </Typography>
+                            <Typography variant="body2" color={colors.grey[300]} mt={1}>
+                              Sensor: {alert.config?.sensor_name || 'Not specified'}
                             </Typography>
                             <Box mt={1}>
                               <FormControlLabel
@@ -245,15 +380,17 @@ const AlertsManagement = () => {
                                     checked={alert.is_active}
                                     onChange={async () => {
                                       try {
-                                        await axios.put(`http://localhost:5000/alerts/alerts/${alert.id}`, {
+                                        await axios.put(`http://localhost:5000/alerts/${alert.id}`, {
                                           ...alert,
                                           is_active: !alert.is_active
                                         });
-                                        loadAlerts();
+                                        await loadAlerts();
                                       } catch (error) {
-                                        console.error('Error al actualizar la alerta:', error);
+                                        console.error('Error updating alert:', error);
+                                        setError('Error updating alert status');
                                       }
                                     }}
+                                    disabled={loading}
                                   />
                                 }
                                 label={alert.is_active ? "Activa" : "Inactiva"}
@@ -263,11 +400,19 @@ const AlertsManagement = () => {
                         </Card>
                       </Grid>
                     ))}
+                  {alerts.filter(alert => alert.controlador_id === controller.id).length === 0 && (
+                    <Grid item xs={12}>
+                      <Typography color={colors.grey[300]} textAlign="center">
+                        No hay alertas para este controlador
+                      </Typography>
+                    </Grid>
+                  )}
                 </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+      ))}
       </Grid>
 
       <Dialog 
@@ -280,57 +425,7 @@ const AlertsManagement = () => {
           {selectedAlert ? 'Editar Alerta' : 'Crear Nueva Alerta'}
         </DialogTitle>
         <DialogContent>
-          <Box py={2}>
-            <TextField
-              fullWidth
-              label="Nombre de la Alerta"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              margin="normal"
-              error={error.includes('nombre')}
-            />
-            <TextField
-              fullWidth
-              label="Descripción"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              margin="normal"
-              multiline
-              rows={2}
-            />
-            {selectedController && (
-              <FormControl fullWidth margin="normal">
-                <InputLabel>Sensor</InputLabel>
-                <Select
-                  value={formData.config.sensor_name}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    config: {
-                      ...formData.config,
-                      sensor_name: e.target.value
-                    }
-                  })}
-                  error={error.includes('sensor')}
-                >
-                  <MenuItem value="">Seleccione un sensor</MenuItem>
-                  {Object.entries(selectedController.config).map(([key, value]) => (
-                    <MenuItem key={key} value={value.name}>
-                      {value.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                />
-              }
-              label={formData.is_active ? "Activa" : "Inactiva"}
-            />
-          </Box>
+          {renderDialogContent()}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)} disabled={loading}>

@@ -12,8 +12,9 @@ import axios from "axios";
 import ConfiguracionControlador from "../../components/ConfiguracionControlador";
 import RecentChanges from "../../components/RecentChanges";
 import ControllerCard from "../../components/ControllerCard";
-import UptimeDowntimeChart from '../../components/UptimeDowntimeChart';
+import AlertHistory from "../../components/AlertHistory";
 import RefreshIcon from '@mui/icons-material/Refresh';
+
 
 const ControllerDetail = () => {
   const { id } = useParams();
@@ -121,7 +122,7 @@ const ControllerDetail = () => {
   return (
     <Box m="20px">
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Header title={controller.name} subtitle="Detailed Controller View" />
+        <Header title={controller.name} subtitle="Vista detallada del controlador" />
         <Button
           variant="contained"
           color="primary"
@@ -142,25 +143,30 @@ const ControllerDetail = () => {
           <Card elevation={3} sx={{ backgroundColor: colors.primary[400], height: '100%', overflow: 'auto' }}>
             <CardContent>
               <Typography variant="h5" color={colors.greenAccent[500]} mb={2}>
-                Recent Changes
               </Typography>
               <RecentChanges changes={recentChanges} />
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={12}>
+          <Box
+            backgroundColor={colors.primary[400]}
+            p={3}
+            borderRadius="4px"
+          >
+            <AlertHistory controladorId={controller.id} />
+          </Box>
+        </Grid>
+
+        <Grid item xs={12}>
           <Card elevation={3} sx={{ backgroundColor: colors.primary[400] }}>
-            <CardContent>
-              <UptimeDowntimeChart controladorId={controller.id} />
-            </CardContent>
+
           </Card>
         </Grid>
         <Grid item xs={12}>
           <Card elevation={3} sx={{ backgroundColor: colors.primary[400] }}>
             <CardContent>
-              <Typography variant="h5" color={colors.greenAccent[500]} mb={2}>
-                Controller Configuration
-              </Typography>
+
               <ConfiguracionControlador controladorId={controller.id} />
             </CardContent>
           </Card>

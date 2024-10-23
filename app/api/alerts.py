@@ -1,19 +1,56 @@
 from flask import Blueprint, request, jsonify, current_app
-from ..models import Aviso, AvisoLog, Controlador
+from ..models import Aviso, AvisoLog, Controlador, Signal
 from ..extensions import db, socketio
+from ..services.alert_service import AlertService
 import logging
-from datetime import datetime
-from sqlalchemy import desc
+from datetime import datetime, timedelta, timezone
+from sqlalchemy import desc, and_, or_
+from sqlalchemy.orm import joinedload
+from typing import Optional
 
 alerts_bp = Blueprint('alerts', __name__)
 logger = logging.getLogger(__name__)
+
+def validate_state(state: str) -> bool:
+    """Validate that a state is either 'On' or 'Off'"""
+    return state in ['On', 'Off']
+
+def validate_alert_config(config: dict, controller_config: dict) -> tuple[bool, Optional[str]]:
+    """
+    Validate alert configuration
+    Returns: (is_valid: bool, error_message: Optional[str])
+    """
+    if not config.get('sensor_name'):
+        return False, "Sensor name is required"
+    
+    # Validate sensor exists and get its type
+    sensor_found = False
+    for sensor_config in controller_config.values():
+        if sensor_config.get('name') == config['sensor_name']:
+            sensor_found = True
+            break
+    
+    if not sensor_found:
+        return False, f"Sensor {config['sensor_name']} not found in controller configuration"
+
+    # Validate conditions
+    conditions = config.get('conditions', [])
+    if not conditions:
+        return False, "At least one condition is required"
+
+    for condition in conditions:
+        if not validate_state(condition.get('from_state', '')):
+            return False, "Invalid from_state - must be 'On' or 'Off'"
+        if not validate_state(condition.get('to_state', '')):
+            return False, "Invalid to_state - must be 'On' or 'Off'"
+
+    return True, None
 
 @alerts_bp.route('/controlador/<controlador_id>/alerts', methods=['GET', 'POST'])
 def handle_alerts(controlador_id):
     session = current_app.db_factory()
     try:
         if request.method == 'GET':
-            # Get all alerts for a controller
             alerts = session.query(Aviso).\
                 filter_by(controlador_id=controlador_id).\
                 order_by(desc(Aviso.created_at)).\
@@ -24,7 +61,6 @@ def handle_alerts(controlador_id):
             })
 
         elif request.method == 'POST':
-            # Create new alert
             data = request.json
             
             # Validate controller exists
@@ -32,18 +68,12 @@ def handle_alerts(controlador_id):
             if not controlador:
                 return jsonify({'error': 'Controller not found'}), 404
 
-            # Validate sensor exists in controller config
-            sensor_name = data['config'].get('sensor_name')
-            sensor_found = False
-            for sensor_config in controlador.config.values():
-                if sensor_config.get('name') == sensor_name:
-                    sensor_found = True
-                    break
-            
-            if not sensor_found:
-                return jsonify({'error': f'Sensor {sensor_name} not found in controller configuration'}), 400
+            # Validate alert configuration
+            is_valid, error_message = validate_alert_config(data['config'], controlador.config)
+            if not is_valid:
+                return jsonify({'error': error_message}), 400
 
-            # Create alert
+            # Create new alert
             new_alert = Aviso(
                 controlador_id=controlador_id,
                 name=data['name'],
@@ -55,7 +85,6 @@ def handle_alerts(controlador_id):
             session.add(new_alert)
             session.commit()
 
-            # Emit socket event for new alert creation
             socketio.emit('alert_created', {
                 'controlador_id': controlador_id,
                 'alert': new_alert.to_dict()
@@ -80,6 +109,14 @@ def handle_alert(alert_id):
 
         if request.method == 'PUT':
             data = request.json
+            
+            # If config is being updated, validate it
+            if 'config' in data:
+                controlador = session.query(Controlador).get(alert.controlador_id)
+                is_valid, error_message = validate_alert_config(data['config'], controlador.config)
+                if not is_valid:
+                    return jsonify({'error': error_message}), 400
+
             alert.name = data.get('name', alert.name)
             alert.description = data.get('description', alert.description)
             alert.is_active = data.get('is_active', alert.is_active)
@@ -88,7 +125,6 @@ def handle_alert(alert_id):
             
             session.commit()
 
-            # Emit socket event for alert update
             socketio.emit('alert_updated', {
                 'controlador_id': alert.controlador_id,
                 'alert': alert.to_dict()
@@ -100,7 +136,6 @@ def handle_alert(alert_id):
             session.delete(alert)
             session.commit()
 
-            # Emit socket event for alert deletion
             socketio.emit('alert_deleted', {
                 'controlador_id': alert.controlador_id,
                 'alert_id': alert_id
@@ -115,26 +150,113 @@ def handle_alert(alert_id):
     finally:
         session.close()
 
+@alerts_bp.route('/controlador/<controlador_id>/active-alerts', methods=['GET'])
+def get_active_alerts(controlador_id):
+    """Get currently active alerts for a controller"""
+    session = current_app.db_factory()
+    alert_service = AlertService(session)
+    
+    try:
+        latest_signal = session.query(Signal).\
+            filter_by(controlador_id=controlador_id).\
+            order_by(desc(Signal.tstamp)).\
+            first()
+
+        if not latest_signal:
+            return jsonify({
+                'active_alerts': [],
+                'count': 0
+            })
+
+        controlador = session.query(Controlador).get(controlador_id)
+        alerts = session.query(Aviso).\
+            filter_by(controlador_id=controlador_id, is_active=True).\
+            all()
+
+        active_alerts = []
+        for alert in alerts:
+            latest_log = session.query(AvisoLog).\
+                filter_by(aviso_id=alert.id).\
+                order_by(desc(AvisoLog.triggered_at)).\
+                first()
+
+            if latest_log and not latest_log.resolved:
+                sensor_name = alert.config.get('sensor_name')
+                sensor_key = None
+                sensor_type = None
+                
+                # Find sensor configuration
+                for key, config in controlador.config.items():
+                    if config.get('name') == sensor_name:
+                        sensor_key = key
+                        sensor_type = config.get('tipo', 'NA')
+                        break
+
+                if sensor_key and sensor_type:
+                    current_value = getattr(latest_signal, sensor_key, None)
+                    # Convert physical state to logical state for the response
+                    logical_state = alert_service.convert_physical_state_to_logical(
+                        current_value, 
+                        sensor_type
+                    )
+                    
+                    active_alerts.append({
+                        'alert': alert.to_dict(),
+                        'latest_log': latest_log.to_dict(),
+                        'current_state': logical_state
+                    })
+
+        return jsonify({
+            'active_alerts': active_alerts,
+            'count': len(active_alerts)
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting active alerts: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        session.close()
+
 @alerts_bp.route('/controlador/<controlador_id>/alert-logs', methods=['GET'])
 def get_alert_logs(controlador_id):
     session = current_app.db_factory()
     try:
         # Get optional query parameters
         limit = request.args.get('limit', 100, type=int)
-        offset = request.args.get('offset', 0, type=int)
+        days = request.args.get('days', 7, type=int)
+        
+        # Calculate the date range
+        end_date = datetime.now(timezone.utc)
+        start_date = end_date - timedelta(days=days)
 
-        # Get logs for all alerts of this controller
+        # Get logs with alert details
         logs = session.query(AvisoLog).\
             join(Aviso).\
-            filter(Aviso.controlador_id == controlador_id).\
+            filter(
+                Aviso.controlador_id == controlador_id,
+                AvisoLog.triggered_at.between(start_date, end_date)
+            ).\
             order_by(desc(AvisoLog.triggered_at)).\
-            offset(offset).\
             limit(limit).\
             all()
 
+        # Convert logs to dictionary format
+        processed_logs = []
+        for log in logs:
+            log_dict = log.to_dict()
+            
+            # Include alert name and description
+            if log.aviso:
+                log_dict['name'] = log.aviso.name
+                log_dict['description'] = log.aviso.description
+
+            processed_logs.append(log_dict)
+
         return jsonify({
-            'logs': [log.to_dict() for log in logs],
-            'count': len(logs)
+            'logs': processed_logs,
+            'count': len(processed_logs),
+            'start_date': start_date.isoformat(),
+            'end_date': end_date.isoformat()
         })
 
     except Exception as e:

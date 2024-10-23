@@ -108,12 +108,15 @@ class AvisoLog(BaseModel):
     old_value = db.Column(db.Boolean)
     new_value = db.Column(db.Boolean)
     signal_id = db.Column(db.Integer, db.ForeignKey('signals.id'))
+    resolved = db.Column(db.Boolean, default=False)
+    resolved_at = db.Column(TIMESTAMP(timezone=True), nullable=True)
     
     # Add relationships
     aviso = db.relationship('Aviso')
     signal = db.relationship('Signal')
 
     def to_dict(self):
+        """Convert the AvisoLog instance to a dictionary"""
         return {
             'id': self.id,
             'aviso_id': self.aviso_id,
@@ -121,9 +124,11 @@ class AvisoLog(BaseModel):
             'sensor_name': self.sensor_name,
             'old_value': self.old_value,
             'new_value': self.new_value,
-            'signal_id': self.signal_id
+            'signal_id': self.signal_id,
+            'resolved': self.resolved,
+            'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None
         }
-
+    
 class SensorMetrics(BaseModel):
     __tablename__ = 'sensor_metrics'
     id = db.Column(db.String(36), primary_key=True, default=generate_uuid)

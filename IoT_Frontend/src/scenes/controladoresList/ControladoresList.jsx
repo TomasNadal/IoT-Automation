@@ -13,7 +13,7 @@ const ControladoresList = () => {
   return (
     <Box>
       <Typography variant="h5" fontWeight="600" color={colors.grey[100]} p="15px">
-        Controllers List
+        Lista de controladores
       </Typography>
       {controladores.map((controlador) => (
         <Controlador key={controlador.id} controlador={controlador} />

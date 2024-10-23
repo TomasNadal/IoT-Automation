@@ -5,30 +5,27 @@ import { Link } from "react-router-dom";
 import "react-pro-sidebar/dist/css/styles.css";
 import { tokens } from "../../theme";
 import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
-import PeopleOutlinedIcon from "@mui/icons-material/PeopleOutlined";
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
-import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
-import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
-import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
 import BusinessIcon from "@mui/icons-material/Business";
 import MenuOutlinedIcon from "@mui/icons-material/MenuOutlined";
-
 
 const Item = ({ title, to, icon, selected, setSelected }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
+  
   return (
-    <MenuItem
-      active={selected === title}
-      style={{
-        color: colors.grey[100],
-      }}
-      onClick={() => setSelected(title)}
-      icon={icon}
-    >
-      <Typography>{title}</Typography>
-      <Link to={to} />
-    </MenuItem>
+    <Link to={to} style={{ textDecoration: 'none' }}>
+      <MenuItem
+        active={selected === title}
+        style={{
+          color: colors.grey[100],
+        }}
+        onClick={() => setSelected(title)}
+        icon={icon}
+      >
+        <Typography>{title}</Typography>
+      </MenuItem>
+    </Link>
   );
 };
 
@@ -37,14 +34,7 @@ const Sidebar = () => {
   const colors = tokens(theme.palette.mode);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selected, setSelected] = useState("Dashboard");
-    // Add this to your items array in the Sidebar component
-  const newItem = {
-      title: "Alerts Management",
-      to: "/alerts",
-      icon: <NotificationsActiveIcon />
-    };
 
-  
   return (
     <Box
       sx={{
@@ -63,6 +53,12 @@ const Sidebar = () => {
         "& .pro-menu-item.active": {
           color: "#6870fa !important",
         },
+        "& .pro-menu-item": {
+          padding: "0 !important",
+        },
+        "& a": {
+          color: 'inherit',
+        }
       }}
     >
       <ProSidebar collapsed={isCollapsed}>
@@ -100,7 +96,7 @@ const Sidebar = () => {
                   alt="profile-user"
                   width="100px"
                   height="100px"
-                  src={`../../assets/user.png`}
+                  src={`images/user.jpeg`}
                   style={{ cursor: "pointer", borderRadius: "50%" }}
                 />
               </Box>
@@ -111,7 +107,6 @@ const Sidebar = () => {
                   fontWeight="bold"
                   sx={{ m: "10px 0 0 0" }}
                 >
-                  Nombre de Usuario
                 </Typography>
                 <Typography variant="h5" color={colors.greenAccent[500]}>
                   Panel de Administrador
@@ -134,13 +129,13 @@ const Sidebar = () => {
               color={colors.grey[300]}
               sx={{ m: "15px 0 5px 20px" }}
             >
-              Equipo
+              Controladores
             </Typography>
 
             <Item
-              title="Manage Team"
-              to="/contacts"
-              icon={<PeopleOutlinedIcon />}
+              title="Todos los controladores"
+              to="/company-components"
+              icon={<BusinessIcon />}
               selected={selected}
               setSelected={setSelected}
             />
@@ -150,58 +145,16 @@ const Sidebar = () => {
               color={colors.grey[300]}
               sx={{ m: "15px 0 5px 20px" }}
             >
-              Perfil
+              Alertas
             </Typography>
+            
             <Item
-              title="Profile Form"
-              to="/form"
-              icon={<PersonOutlinedIcon />}
-              selected={selected}
-              setSelected={setSelected}
-            />
-            <Item
-              title="Calendar"
-              to="/calendar"
-              icon={<CalendarTodayOutlinedIcon />}
-              selected={selected}
-              setSelected={setSelected}
-            />
-            <Item
-              title="Alerts Management"
+              title="Configurar alertas"
               to="/alerts"
               icon={<NotificationsActiveIcon />}
               selected={selected}
               setSelected={setSelected}
             />
-            <Item
-              title="FAQ Page"
-              to="/faq"
-              icon={<HelpOutlineOutlinedIcon />}
-              selected={selected}
-              setSelected={setSelected}
-            />
-
-            <Typography
-              variant="h6"
-              color={colors.grey[300]}
-              sx={{ m: "15px 0 5px 20px" }}
-            >
-              Datos
-            </Typography>
-            <Typography
-            variant="h6"
-            color={colors.grey[300]}
-            sx={{ m: "15px 0 5px 20px" }}
-          >
-            Company
-          </Typography>
-          <Item
-            title="Company Components"
-            to="/company-components"
-            icon={<BusinessIcon />}
-            selected={selected}
-            setSelected={setSelected}
-          />
           </Box>
         </Menu>
       </ProSidebar>

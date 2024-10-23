@@ -25,7 +25,7 @@ const RecentChanges = ({ changes }) => {
       display="flex"
       flexDirection="column"
     >
-      <Typography variant="h5" p={2} color={colors.grey[100]}>Recent Changes</Typography>
+      <Typography variant="h5" p={2} color={colors.grey[100]}>Cambios recientes</Typography>
       <Box
         flex={1}
         overflow="auto"
