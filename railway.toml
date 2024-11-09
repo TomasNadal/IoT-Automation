@@ -4,8 +4,8 @@ buildCommand = "pip install --no-cache-dir -r requirements.txt"
 
 [deploy]
 startCommand = "python main.py"
-healthcheckPath = "/test"
-healthcheckTimeout = 100
+healthcheckPath = "/"  # Cambia a la ruta raíz
+healthcheckTimeout = 180  # Aumenta el timeout
 restartPolicyType = "on_failure"
 
 [build.env]
