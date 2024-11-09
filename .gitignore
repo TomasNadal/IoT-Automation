@@ -20,7 +20,7 @@ db.py
 
 /partials
 *.pyc
-config.py
+
 
 # Logs
 logs
