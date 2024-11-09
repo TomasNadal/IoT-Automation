@@ -1,12 +1,12 @@
 import React, { createContext, useEffect, useContext, useState, useCallback } from 'react';
 import { DataContext } from './DataContext';
 import io from 'socket.io-client';
+import config from '../config/config';
 
 // Socket Configuration
 const getSocketConfig = () => {
-  const URL = process.env.NODE_ENV === 'production'
-    ? 'https://your-production-domain.com'
-    : 'https://calm-awfully-shrew.ngrok-free.app/';
+  // Por esto:
+  const URL = config.wsUrl;
 
   const socketOptions = {
     path: '',

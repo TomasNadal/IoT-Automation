@@ -458,6 +458,7 @@ def controlador_changes(session, controlador_id, limit=3):
         previous_values = {name: getattr(controlador_signals[0], name) for name in sensor_names}
 
         for signal in controlador_signals[1:]:
+
             changes = []
             current_values = {name: getattr(signal, name) for name in sensor_names}
 

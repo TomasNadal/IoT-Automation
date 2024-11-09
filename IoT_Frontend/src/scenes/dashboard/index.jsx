@@ -16,6 +16,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import config from '../../config/config';
 
 const isControllerConnected = (controller) => {
   if (!controller.last_signal) return false;
@@ -37,7 +38,7 @@ const EnhancedDashboardOverview = () => {
     const fetchTriggeredAlerts = async () => {
       try {
         const alertLogPromises = controladores.map(controller =>
-          axios.get(`https://calm-awfully-shrew.ngrok-free.app/alerts/controlador/${controller.id}/alert-logs`, {
+          axios.get(`${config.apiUrl}/alerts/controlador/${controller.id}/alert-logs`, {
             params: {
               // Get recent logs, for example last 5 minutes
               limit: 100
@@ -109,7 +110,7 @@ const EnhancedDashboardOverview = () => {
     const fetchAllRecentChanges = async () => {
       try {
         const changesPromises = controladores.map(controlador => 
-          axios.get(`https://calm-awfully-shrew.ngrok-free.app/front/controlador/${controlador.id}/changes`, {
+          axios.get(`${config.apiUrl}/front/controlador/${controlador.id}/changes`, {
             headers: {
               'ngrok-skip-browser-warning': 'true'
             }

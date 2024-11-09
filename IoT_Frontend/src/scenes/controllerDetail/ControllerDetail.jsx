@@ -16,6 +16,8 @@ import ControllerCard from "../../components/ControllerCard";
 import AlertHistory from "../../components/AlertHistory";
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DeleteIcon from '@mui/icons-material/Delete';
+import config from '../../config/config';
+
 
 const DeleteControllerDialog = ({ open, onClose, onConfirm, controllerName, isDeleting }) => {
   const theme = useTheme();
@@ -100,11 +102,9 @@ const ControllerDetail = () => {
 
   const fetchChangesWithMapping = useCallback(async (controllerId) => {
     try {
-      const response = await axios.get(`https://calm-awfully-shrew.ngrok-free.app/front/controlador/${controllerId}/changes`, {
-        headers: {
-          'ngrok-skip-browser-warning': 'true'
-        }
-      });
+      const response = await axios.get(
+        `${config.apiUrl}/front/controlador/${controllerId}/changes`
+      );
       
       if (!controller) {
         console.error(`Controller with id ${controllerId} not found`);
@@ -139,7 +139,7 @@ const ControllerDetail = () => {
     try {
       const [changesResponse, uptimeDowntimeResponse] = await Promise.all([
         fetchChangesWithMapping(id),
-        axios.get(`https://calm-awfully-shrew.ngrok-free.app/front/controlador/${id}/uptime-downtime`)
+        axios.get(`${config.apiUrl}/front/controlador/${id}/uptime-downtime`)
       ]);
 
       if (changesResponse) {
@@ -163,11 +163,9 @@ const ControllerDetail = () => {
     setDeleteError(null);
     
     try {
-      await axios.delete(`https://calm-awfully-shrew.ngrok-free.app/front/dashboard/controlador/${controller.id}`, {
-        headers: {
-          'ngrok-skip-browser-warning': 'true'
-        }
-      });
+      await axios.delete(
+        `${config.apiUrl}/front/dashboard/controlador/${controller.id}`
+      );
       navigate('/company-components', { 
         replace: true,
         state: { 

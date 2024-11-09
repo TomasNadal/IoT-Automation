@@ -1,19 +1,12 @@
 import { useQuery, useQueryClient } from 'react-query';
 import axios from 'axios';
 import { useMemo } from 'react';
+import config from '../config/config';
 
 const fetchControladores = async () => {
   const [responseDashboard, responseStats] = await Promise.all([
-    axios.get('https://calm-awfully-shrew.ngrok-free.app/front/dashboard/empresa/b8cdf279-d884-4db1-aa2c-eb8d7e4c41bf/dashboard',{
-      headers: {
-        'ngrok-skip-browser-warning': 'true'
-      }
-    }),
-    axios.get('https://calm-awfully-shrew.ngrok-free.app/front/dashboard/empresa/b8cdf279-d884-4db1-aa2c-eb8d7e4c41bf/connected_stats',{
-      headers: {
-        'ngrok-skip-browser-warning': 'true'
-      }
-    })
+    axios.get(`${config.apiUrl}/front/dashboard/empresa/b8cdf279-d884-4db1-aa2c-eb8d7e4c41bf/dashboard`),
+    axios.get(`${config.apiUrl}/front/dashboard/empresa/b8cdf279-d884-4db1-aa2c-eb8d7e4c41bf/connected_stats`)
   ]);
   
   const processedControladores = responseDashboard.data.map(controlador => {

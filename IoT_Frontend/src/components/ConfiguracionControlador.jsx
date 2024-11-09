@@ -19,6 +19,7 @@ import {
 import axios from "axios";
 import { DataContext } from "../context/DataContext";
 import { tokens } from "../theme";
+import config from '../config/config';
 
 const StyledCard = styled(Card)(({ theme }) => {
   const colors = tokens(theme.palette.mode);
@@ -148,14 +149,9 @@ const ConfiguracionControlador = ({ controladorId, initialConfig, onConfigChange
     }
 
     try {
-      await axios.post(`http://localhost:5000/front/controlador/${controladorId}/config`, 
-        { config: pendingConfig },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          withCredentials: false,
-        }
+      await await axios.post(
+        `${config.apiUrl}/front/controlador/${controladorId}/config`, 
+        { config: pendingConfig }
       );
       setError(null);
       setSuccessMessage("Configuración guardada con éxito");

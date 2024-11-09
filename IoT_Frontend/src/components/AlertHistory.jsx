@@ -21,6 +21,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
+import config from '../config/config';
 import { WebSocketContext } from '../context/WebSocketContext';
 
 const AlertHistory = ({ controladorId }) => {
@@ -106,14 +107,14 @@ const AlertHistory = ({ controladorId }) => {
     
     setLoading(true);
     try {
-      const response = await axios.get(`https://calm-awfully-shrew.ngrok-free.app/alerts/controlador/${controladorId}/alert-logs`, {
-        params: {
-          limit: 100
-        },
-        headers: {
-          'ngrok-skip-browser-warning': 'true'
+      const response = await axios.get(
+        `${config.apiUrl}/alerts/controlador/${controladorId}/alert-logs`,
+        {
+          params: {
+            limit: 100
+          }
         }
-      });
+      );
 
       if (response.data && response.data.logs) {
         const processedLogs = processAlertLogs(response.data.logs);

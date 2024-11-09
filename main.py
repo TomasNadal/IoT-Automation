@@ -27,11 +27,15 @@ def create_and_configure_app(config_name):
 
     return app
 
-# Create session app
-session_app = create_and_configure_app('production_session')
 
-# Create transaction app
-transaction_app = create_and_configure_app('production_transaction')
+# Determine environment
+env_prefix = 'production' if os.getenv('FLASK_ENV') == 'production' else 'development'
+
+
+
+# Create session app
+session_app = create_and_configure_app(f'{env_prefix}_session')
+
 
 if session_app is None:
     sys.exit(1)
@@ -43,17 +47,23 @@ def test_route():
     return "Session app is running!"
 
 # Function to run the session app
-def run_session_app():
+def run_session_app(port,host,debug):
     logger.info("Starting session app on port 5000")
-    socketio.run(session_app, debug=False, port=5000, host='0.0.0.0')
-
-# Function to run the transaction app
-def run_transaction_app():
-    logger.info("Starting transaction app on port 5001")
-    transaction_app.run(debug=True, port=5001, host='0.0.0.0')
-
+    socketio.run(session_app, debug=debug, port=port, host=host)
 
 
 
 if __name__ == '__main__':
-    run_session_app()
+    port = int(os.getenv('PORT', 5000))
+    
+    # Determinar host basado en entorno
+    if os.getenv('FLASK_ENV') == 'production':
+        host = '0.0.0.0'
+        debug = False
+    else:
+        host = '127.0.0.1'
+        debug = True
+
+    print(port,host,debug)
+    run_session_app(port, host,debug)
+

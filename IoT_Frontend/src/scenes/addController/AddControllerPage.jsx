@@ -6,6 +6,7 @@ import axios from 'axios';
 import { DataContext } from '../../context/DataContext';
 import ConfiguracionControlador from '../../components/ConfiguracionControlador';
 import Header from "../../components/Header";
+import config from '../../config/config';
 
 const AddControllerPage = () => {
   const theme = useTheme();
@@ -49,15 +50,15 @@ const AddControllerPage = () => {
     }
   
     try {
-      const response = await axios.post('https://calm-awfully-shrew.ngrok-free.app/front/dashboard/controlador', {
-        name,
-        id,
-        empresa_id: empresaId,
-        config,
-        headers: {
-          'ngrok-skip-browser-warning': 'true'
+      const response = await axios.post(
+        `${config.apiUrl}/front/dashboard/controlador`,
+        {
+          name,
+          id,
+          empresa_id: empresaId,
+          config,
         }
-      });
+      );
   
       if (response.status === 201) {
         updateControlador(response.data);

@@ -29,6 +29,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
+import config from '../../config/config';
 import { CircularProgress } from '@mui/material';
 
 const AlertsManagement = () => {
@@ -67,11 +68,7 @@ const AlertsManagement = () => {
     setError('');
     try {
       const alertPromises = controladores.map(controller =>
-        axios.get(`https://calm-awfully-shrew.ngrok-free.app/alerts/controlador/${controller.id}/alerts`, {
-          headers: {
-            'ngrok-skip-browser-warning': 'true'
-          }
-        })
+        axios.get(`${config.apiUrl}/alerts/controlador/${controller.id}/alerts`)
       );
       const responses = await Promise.all(alertPromises);
       const allAlerts = responses.flatMap(response => response.data?.alerts || []);
@@ -275,9 +272,9 @@ const handleSubmit = async () => {
   setError('');
   try {
     if (selectedAlert) {
-      await axios.put(`https://calm-awfully-shrew.ngrok-free.app/alerts/${selectedAlert.id}`, formData);
+      await axios.put(`${config.apiUrl}/alerts/${selectedAlert.id}`, formData);
     } else {
-      await axios.post(`https://calm-awfully-shrew.ngrok-free.app/alerts/controlador/${selectedController.id}/alerts`, {
+      await axios.post(`${config.apiUrl}/alerts/controlador/${selectedController.id}/alerts`, {
         ...formData,
         controlador_id: selectedController.id
       });
@@ -298,7 +295,7 @@ const handleDelete = async (alertId) => {
   
   setLoading(true);
   try {
-    await axios.delete(`https://calm-awfully-shrew.ngrok-free.app/alerts/${alertId}`);
+    await axios.delete(`${config.apiUrl}/alerts/${alertId}`);
     await loadAlerts(); // Reload alerts after deletion
   } catch (error) {
     console.error('Error deleting alert:', error);
@@ -384,7 +381,7 @@ const handleDelete = async (alertId) => {
                                     checked={alert.is_active}
                                     onChange={async () => {
                                       try {
-                                        await axios.put(`https://calm-awfully-shrew.ngrok-free.app/alerts/${alert.id}`, {
+                                        await axios.put(`${config.apiUrl}/alerts/${alert.id}`, {
                                           ...alert,
                                           is_active: !alert.is_active
                                         });

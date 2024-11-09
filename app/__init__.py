@@ -16,15 +16,26 @@ def create_app(config_name):
     engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'], **app.config['POOL_OPTIONS'])
     app.db_factory = scoped_session(sessionmaker(bind=engine))
 
-    # Initialize extensions
+    # Filtrar y limpiar CORS_ORIGINS
     db.init_app(app)
-    CORS(app, resources={r"/*": {"origins": [
-    "http://localhost:5173",
-    "https://iottest.ngrok.dev"
-]}}, supports_credentials=True)
+    cors_origins = []
+    for origin in app.config['CORS_ORIGINS']:
+        if isinstance(origin, list):  # Si es una lista (de ADDITIONAL_FRONTEND_URLS)
+            cors_origins.extend([url.strip() for url in origin if url.strip()])
+        elif isinstance(origin, str) and origin.strip():
+            cors_origins.append(origin.strip())
+    
+    # Configurar CORS con las origins filtradas
+    CORS(app, 
+        origins=cors_origins,
+        supports_credentials=True
+    )
 
     if not socketio.server:
-        socketio.init_app(app, cors_allowed_origins="*", async_mode='eventlet')
+        socketio.init_app(app,
+            cors_allowed_origins=cors_origins,
+            async_mode='eventlet'
+            )
 
     @app.teardown_appcontext
     def shutdown_session(exception=None):

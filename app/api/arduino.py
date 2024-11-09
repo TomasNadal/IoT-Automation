@@ -59,17 +59,18 @@ def receive_data():
         #    raise ValueError(f"Expected 8 values, got {len(parts)}")
 
         controlador_id = data['id']
-        sensor_states = data['sensors']
+        sensor_states_data = data['sensors']
         logger.info(f"Processing data for controller: {controlador_id}")
 
         # Convert string sensor states to dictionary
+        print(sensor_states_data)
         sensor_states = {
-            'value_sensor1': sensor_states[0] == '1',
-            'value_sensor2': sensor_states[1] == '1',
-            'value_sensor3': sensor_states[2] == '1',
-            'value_sensor4': sensor_states[3] == '1',
-            'value_sensor5': sensor_states[4] == '1',
-            'value_sensor6': sensor_states[5] == '1'
+            'value_sensor1': sensor_states_data[0] == 1,
+            'value_sensor2': sensor_states_data[1] == 1,
+            'value_sensor3': sensor_states_data[2] == 1,
+            'value_sensor4': sensor_states_data[3] == 1,
+            'value_sensor5': sensor_states_data[4] == 1,
+            'value_sensor6': sensor_states_data[5] == 1
         }
         logger.info(f"Sensor states: {sensor_states}")
 
