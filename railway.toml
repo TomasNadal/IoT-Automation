@@ -3,7 +3,7 @@ builder = "nixpacks"
 buildCommand = "pip install --no-cache-dir -r requirements.txt"
 
 [deploy]
-startCommand = "python main.py"
+startCommand = "PYTHONPATH=/app python main.py"
 healthcheckPath = "/"  # Cambia a la ruta raíz
 healthcheckTimeout = 180  # Aumenta el timeout
 restartPolicyType = "on_failure"

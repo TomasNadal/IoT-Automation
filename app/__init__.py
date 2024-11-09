@@ -2,11 +2,11 @@ from flask import Flask, g, jsonify
 from flask_cors import CORS
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
-from app.config import config
+from .config import config
 import logging
-from app.db_utils import get_db_stats, db_connection_logger
-from app.extensions import db, socketio
-from app.socket_events import socketio
+from .db_utils import get_db_stats, db_connection_logger
+from .extensions import db, socketio
+from .socket_events import socketio
 
 def create_app(config_name):
     app = Flask(__name__)
