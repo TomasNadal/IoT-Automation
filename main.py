@@ -12,30 +12,25 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(leve
 logger = logging.getLogger(__name__)
 
 def create_and_configure_app(config_name):
-    app= create_app(config_name)
+    app = create_app(config_name)
     if app is None:
         logger.error(f"Error: Application could not be created with config: {config_name}")
         return None
 
-
     @app.after_request
     def after_request(response):
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
 
     return app
 
-
 # Determine environment
 env_prefix = 'production' if os.getenv('FLASK_ENV') == 'production' else 'development'
 
-
-
 # Create session app
 session_app = create_and_configure_app(f'{env_prefix}_session')
-
 
 if session_app is None:
     sys.exit(1)
@@ -46,24 +41,38 @@ def test_route():
     logger.info("Test route accessed")
     return "Session app is running!"
 
-# Function to run the session app
-def run_session_app(port,host,debug):
-    logger.info("Starting session app on port 5000")
-    socketio.run(session_app, debug=debug, port=port, host=host)
+@session_app.route('/')
+def home():
+    return "IoT Automation Backend is running!"
 
-
+def run_session_app(port, host, debug):
+    logger.info(f"Starting session app on {host}:{port} with debug={debug}")
+    socketio.run(
+        session_app,
+        host=host,
+        port=port,
+        debug=debug,
+        use_reloader=not os.getenv('FLASK_ENV') == 'production',  # Solo usar reloader en desarrollo
+        cors_allowed_origins="*",  # O configura esto desde variables de entorno
+        allow_unsafe_werkzeug=True  # Necesario para Railway
+    )
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     
-    # Determinar host basado en entorno
-    if os.getenv('FLASK_ENV') == 'production':
-        host = '0.0.0.0'
-        debug = False
-    else:
-        host = '127.0.0.1'
-        debug = True
+    # Determinar configuración basada en entorno
+    is_production = os.getenv('FLASK_ENV') == 'production'
+    
+    config = {
+        'host': '0.0.0.0' if is_production else '127.0.0.1',
+        'port': port,
+        'debug': not is_production
+    }
 
-    print(port,host,debug)
-    run_session_app(port, host,debug)
-
+    logger.info(f"Starting application with config: {config}")
+    
+    try:
+        run_session_app(**config)
+    except Exception as e:
+        logger.error(f"Failed to start application: {e}")
+        sys.exit(1)
