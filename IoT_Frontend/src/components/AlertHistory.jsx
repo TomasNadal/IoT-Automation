@@ -106,9 +106,12 @@ const AlertHistory = ({ controladorId }) => {
     
     setLoading(true);
     try {
-      const response = await axios.get(`http://localhost:5000/alerts/controlador/${controladorId}/alert-logs`, {
+      const response = await axios.get(`https://calm-awfully-shrew.ngrok-free.app/alerts/controlador/${controladorId}/alert-logs`, {
         params: {
           limit: 100
+        },
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
         }
       });
 

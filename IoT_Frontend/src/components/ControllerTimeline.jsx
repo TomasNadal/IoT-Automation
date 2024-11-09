@@ -17,7 +17,11 @@ const ControllerTimeline = ({ controllerId }) => {
   useEffect(() => {
     const fetchTimelineData = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/front/controlador/${controllerId}/timeline`);
+        const response = await axios.get(`https://calm-awfully-shrew.ngrok-free.app//front/controlador/${controllerId}/timeline`,{
+          headers: {
+            'ngrok-skip-browser-warning': 'true'
+          }
+        });
         setSensorConfig(response.data.sensor_config);
         const processedData = processTimelineData(response.data.timeline, response.data.sensor_config);
         setTimelineData(processedData);

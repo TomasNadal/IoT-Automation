@@ -37,10 +37,13 @@ const EnhancedDashboardOverview = () => {
     const fetchTriggeredAlerts = async () => {
       try {
         const alertLogPromises = controladores.map(controller =>
-          axios.get(`http://localhost:5000/alerts/controlador/${controller.id}/alert-logs`, {
+          axios.get(`https://calm-awfully-shrew.ngrok-free.app/alerts/controlador/${controller.id}/alert-logs`, {
             params: {
               // Get recent logs, for example last 5 minutes
               limit: 100
+            },
+            headers: {
+              'ngrok-skip-browser-warning': 'true'
             }
           })
         );
@@ -106,7 +109,11 @@ const EnhancedDashboardOverview = () => {
     const fetchAllRecentChanges = async () => {
       try {
         const changesPromises = controladores.map(controlador => 
-          axios.get(`http://localhost:5000/front/controlador/${controlador.id}/changes`)
+          axios.get(`https://calm-awfully-shrew.ngrok-free.app/front/controlador/${controlador.id}/changes`, {
+            headers: {
+              'ngrok-skip-browser-warning': 'true'
+            }
+          })
         );
         const responses = await Promise.all(changesPromises);
         

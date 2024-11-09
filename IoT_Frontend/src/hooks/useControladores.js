@@ -4,8 +4,16 @@ import { useMemo } from 'react';
 
 const fetchControladores = async () => {
   const [responseDashboard, responseStats] = await Promise.all([
-    axios.get('http://localhost:5000/front/dashboard/empresa/b8cdf279-d884-4db1-aa2c-eb8d7e4c41bf/dashboard'),
-    axios.get('http://localhost:5000/front/dashboard/empresa/b8cdf279-d884-4db1-aa2c-eb8d7e4c41bf/connected_stats')
+    axios.get('https://calm-awfully-shrew.ngrok-free.app/front/dashboard/empresa/b8cdf279-d884-4db1-aa2c-eb8d7e4c41bf/dashboard',{
+      headers: {
+        'ngrok-skip-browser-warning': 'true'
+      }
+    }),
+    axios.get('https://calm-awfully-shrew.ngrok-free.app/front/dashboard/empresa/b8cdf279-d884-4db1-aa2c-eb8d7e4c41bf/connected_stats',{
+      headers: {
+        'ngrok-skip-browser-warning': 'true'
+      }
+    })
   ]);
   
   const processedControladores = responseDashboard.data.map(controlador => {

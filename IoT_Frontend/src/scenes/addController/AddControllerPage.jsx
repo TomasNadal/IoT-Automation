@@ -49,11 +49,14 @@ const AddControllerPage = () => {
     }
   
     try {
-      const response = await axios.post('http://localhost:5000/front/dashboard/controlador', {
+      const response = await axios.post('https://calm-awfully-shrew.ngrok-free.app/front/dashboard/controlador', {
         name,
         id,
         empresa_id: empresaId,
-        config
+        config,
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
+        }
       });
   
       if (response.status === 201) {

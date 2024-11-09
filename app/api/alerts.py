@@ -9,6 +9,7 @@ from sqlalchemy.orm import joinedload
 from typing import Optional
 
 alerts_bp = Blueprint('alerts', __name__)
+
 logger = logging.getLogger(__name__)
 
 def validate_state(state: str) -> bool:
@@ -99,7 +100,7 @@ def handle_alerts(controlador_id):
     finally:
         session.close()
 
-@alerts_bp.route('/<alert_id>', methods=['PUT', 'DELETE'])
+@alerts_bp.route('/<alert_id>', methods=['PUT'])
 def handle_alert(alert_id):
     session = current_app.db_factory()
     try:
@@ -145,6 +146,44 @@ def handle_alert(alert_id):
 
     except Exception as e:
         logger.error(f"Error handling alert {alert_id}: {str(e)}")
+        session.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        session.close()
+
+
+@alerts_bp.route('/<alert_id>', methods=['DELETE'])
+def delete_alert(alert_id):
+    """Delete an alert and its associated logs"""
+    session = current_app.db_factory()
+    try:
+        logger.info(f"Starting deletion process for alert {alert_id}")
+
+        # First, delete all associated logs
+        session.query(AvisoLog).filter_by(aviso_id=alert_id).delete(synchronize_session='fetch')
+        logger.info(f"Deleted associated logs for alert {alert_id}")
+
+        # Then delete the alert itself
+        alert = session.query(Aviso).get(alert_id)
+        if not alert:
+            return jsonify({'error': 'Alert not found'}), 404
+
+        controlador_id = alert.controlador_id  # Store this for the event emission
+        
+        session.delete(alert)
+        session.commit()
+        
+        # Emit alert deleted event
+        socketio.emit('alert_deleted', {
+            'controlador_id': controlador_id,
+            'alert_id': alert_id
+        })
+
+        logger.info(f"Successfully deleted alert {alert_id}")
+        return jsonify({'message': 'Alert deleted successfully'})
+
+    except Exception as e:
+        logger.error(f"Error deleting alert {alert_id}: {str(e)}")
         session.rollback()
         return jsonify({'error': str(e)}), 500
     finally:

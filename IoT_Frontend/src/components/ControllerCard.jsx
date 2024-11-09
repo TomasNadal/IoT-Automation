@@ -38,6 +38,13 @@ const ControllerCard = ({ controller, onUpdateController }) => {
     return (currentTime - lastSignalTime) < 5 * 60 * 1000; // 5 minutes
   };
 
+  const getSensorState = (value, sensorConfig) => {
+    // For NA (Normally Open), physical true means ON
+    // For NC (Normally Closed), physical true means OFF
+    const tipo = sensorConfig?.tipo || 'NA';
+    return tipo === 'NA' ? value : !value;
+  };
+
   return (
     <Card sx={{ backgroundColor: colors.primary[400], height: '100%' }}>
       <CardContent>
@@ -85,11 +92,13 @@ const ControllerCard = ({ controller, onUpdateController }) => {
                 .map(([key, value]) => {
                   const sensorConfig = controller.config[key];
                   const sensorName = sensorConfig ? sensorConfig.name : key;
+                  const isOn = getSensorState(value, sensorConfig);
+                  
                   return (
                     <Grid item xs={6} key={key}>
                       <Chip
-                        label={`${sensorName}: ${value ? 'ON' : 'OFF'}`}
-                        color={value ? "success" : "error"}
+                        label={`${sensorName}: ${isOn ? 'ON' : 'OFF'}`}
+                        color={isOn ? "success" : "error"}
                         size="small"
                         sx={{ width: '100%' }}
                       />

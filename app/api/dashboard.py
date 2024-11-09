@@ -1,6 +1,6 @@
 from flask import Blueprint, current_app, request, make_response, jsonify
 from flask_restx import Api, Resource, fields
-from ..models import Empresa, Controlador, Signal, Aviso
+from ..models import Empresa, Controlador, Signal, Aviso, AvisoLog, SensorMetrics
 from sqlalchemy.sql import func, case, and_, text
 from sqlalchemy import cast, String
 from sqlalchemy.exc import SQLAlchemyError
@@ -839,3 +839,67 @@ def fetch_sensor_connection_data(controlador_id, sensor_id, start_datetime, end_
     
     start_datetime = start_datetime.astimezone(utc)
     end_datetime = end_datetime.astimezone
+
+@ns_dashboard.route('/controlador/<string:controlador_id>')
+class ControladorResource(Resource):
+    @ns_dashboard.doc('delete_controlador')
+    def delete(self, controlador_id):
+        """Delete a controller and all its related data"""
+        session = current_app.db_factory()
+        try:
+            logger.info(f"Starting deletion process for controller {controlador_id}")
+            
+            # Get all alert IDs for this controller first
+            alert_ids = [alert.id for alert in session.query(Aviso).filter_by(controlador_id=controlador_id).all()]
+            
+            if alert_ids:
+                # Delete alert logs first (child records)
+                alert_logs_deleted = session.query(AvisoLog).filter(AvisoLog.aviso_id.in_(alert_ids)).delete(synchronize_session='fetch')
+                logger.info(f"Deleted {alert_logs_deleted} alert logs")
+
+            # Delete alerts
+            alerts_deleted = session.query(Aviso).filter_by(controlador_id=controlador_id).delete(synchronize_session='fetch')
+            logger.info(f"Deleted {alerts_deleted} alerts")
+
+            # Get all signal IDs that aren't referenced in aviso_logs
+            safe_signal_ids = session.query(Signal.id).outerjoin(
+                AvisoLog, Signal.id == AvisoLog.signal_id
+            ).filter(
+                Signal.controlador_id == controlador_id,
+                AvisoLog.id.is_(None)
+            ).all()
+            
+            safe_signal_ids = [id[0] for id in safe_signal_ids]
+
+            # Delete signals that aren't referenced
+            if safe_signal_ids:
+                signals_deleted = session.query(Signal).filter(Signal.id.in_(safe_signal_ids)).delete(synchronize_session='fetch')
+                logger.info(f"Deleted {signals_deleted} unreferenced signals")
+
+            # Delete the controller
+            controlador = session.query(Controlador).get(controlador_id)
+            if not controlador:
+                return {'message': 'Controller not found'}, 404
+
+            session.delete(controlador)
+            session.commit()
+            logger.info(f"Successfully deleted controller {controlador_id}")
+
+            return {
+                'message': 'Controller and related data deleted successfully',
+                'details': {
+                    'alerts_deleted': alerts_deleted,
+                    'alert_logs_deleted': alert_logs_deleted if alert_ids else 0,
+                    'signals_deleted': signals_deleted if safe_signal_ids else 0
+                }
+            }, 200
+
+        except Exception as e:
+            logger.error(f"Error deleting controller {controlador_id}: {str(e)}")
+            session.rollback()
+            return {
+                'message': 'Error deleting controller',
+                'error': str(e)
+            }, 500
+        finally:
+            session.close()

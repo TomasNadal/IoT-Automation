@@ -18,7 +18,10 @@ def create_app(config_name):
 
     # Initialize extensions
     db.init_app(app)
-    CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
+    CORS(app, resources={r"/*": {"origins": [
+    "http://localhost:5173",
+    "https://iottest.ngrok.dev"
+]}}, supports_credentials=True)
 
     if not socketio.server:
         socketio.init_app(app, cors_allowed_origins="*", async_mode='eventlet')

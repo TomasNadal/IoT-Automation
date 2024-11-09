@@ -6,7 +6,7 @@ import io from 'socket.io-client';
 const getSocketConfig = () => {
   const URL = process.env.NODE_ENV === 'production'
     ? 'https://your-production-domain.com'
-    : 'http://localhost:5000';
+    : 'https://calm-awfully-shrew.ngrok-free.app/';
 
   const socketOptions = {
     path: '',

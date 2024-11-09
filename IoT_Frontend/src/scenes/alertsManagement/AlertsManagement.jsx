@@ -67,7 +67,11 @@ const AlertsManagement = () => {
     setError('');
     try {
       const alertPromises = controladores.map(controller =>
-        axios.get(`http://localhost:5000/alerts/controlador/${controller.id}/alerts`)
+        axios.get(`https://calm-awfully-shrew.ngrok-free.app/alerts/controlador/${controller.id}/alerts`, {
+          headers: {
+            'ngrok-skip-browser-warning': 'true'
+          }
+        })
       );
       const responses = await Promise.all(alertPromises);
       const allAlerts = responses.flatMap(response => response.data?.alerts || []);
@@ -271,9 +275,9 @@ const handleSubmit = async () => {
   setError('');
   try {
     if (selectedAlert) {
-      await axios.put(`http://localhost:5000/alerts/${selectedAlert.id}`, formData);
+      await axios.put(`https://calm-awfully-shrew.ngrok-free.app/alerts/${selectedAlert.id}`, formData);
     } else {
-      await axios.post(`http://localhost:5000/alerts/controlador/${selectedController.id}/alerts`, {
+      await axios.post(`https://calm-awfully-shrew.ngrok-free.app/alerts/controlador/${selectedController.id}/alerts`, {
         ...formData,
         controlador_id: selectedController.id
       });
@@ -294,7 +298,7 @@ const handleDelete = async (alertId) => {
   
   setLoading(true);
   try {
-    await axios.delete(`http://localhost:5000/alerts/${alertId}`);
+    await axios.delete(`https://calm-awfully-shrew.ngrok-free.app/alerts/${alertId}`);
     await loadAlerts(); // Reload alerts after deletion
   } catch (error) {
     console.error('Error deleting alert:', error);
@@ -380,7 +384,7 @@ const handleDelete = async (alertId) => {
                                     checked={alert.is_active}
                                     onChange={async () => {
                                       try {
-                                        await axios.put(`http://localhost:5000/alerts/${alert.id}`, {
+                                        await axios.put(`https://calm-awfully-shrew.ngrok-free.app/alerts/${alert.id}`, {
                                           ...alert,
                                           is_active: !alert.is_active
                                         });
