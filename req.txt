@@ -1,8 +1,0 @@
-$env:FLASK_APP="main.py"
-$env:FLASK_ENV="production"
-python -c "from main import run_session_app; run_session_app()"
-
-
-$env:FLASK_APP="main.py"
-$env:FLASK_ENV="production"
-python -c "from main import run_transaction_app; run_transaction_app()"
