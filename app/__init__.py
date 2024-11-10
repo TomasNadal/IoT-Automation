@@ -31,6 +31,23 @@ def create_app(config_name):
     # Remove any empty strings and duplicates
     allowed_origins = list(set(filter(None, allowed_origins)))
 
+    # Configure CORS for the entire application
+    CORS(app, 
+        resources={
+            r"/*": {
+                "origins": allowed_origins,
+                "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                "allow_headers": ["Content-Type", "Authorization", "Accept"],
+                "supports_credentials": True,
+                "expose_headers": ["Content-Type", "X-CSRFToken"],
+                "max_age": 600
+            }
+        },
+        supports_credentials=True
+    )
+
+
+
     # Initialize Socket.IO
     if not socketio.server:
         # Update Socket.IO CORS settings

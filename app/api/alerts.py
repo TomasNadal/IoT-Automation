@@ -12,6 +12,21 @@ alerts_bp = Blueprint('alerts', __name__)
 
 logger = logging.getLogger(__name__)
 
+
+@alerts_bp.after_request
+def after_request(response):
+    allowed_origins = [
+        'http://localhost:5173',
+        'https://iot-automation.pages.dev'
+    ]
+    origin = request.headers.get('Origin')
+    if origin in allowed_origins:
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
+
 def validate_state(state: str) -> bool:
     """Validate that a state is either 'On' or 'Off'"""
     return state in ['On', 'Off']
