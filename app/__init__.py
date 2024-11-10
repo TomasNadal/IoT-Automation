@@ -18,6 +18,8 @@ def create_app(config_name):
 
     # Filtrar y limpiar CORS_ORIGINS
     db.init_app(app)
+
+    
     cors_origins = []
     for origin in app.config['CORS_ORIGINS']:
         if isinstance(origin, list):  # Si es una lista (de ADDITIONAL_FRONTEND_URLS)
@@ -26,15 +28,26 @@ def create_app(config_name):
             cors_origins.append(origin.strip())
     
     # Configurar CORS con las origins filtradas
-    CORS(app, 
-        origins=cors_origins,
-        supports_credentials=True
-    )
+    CORS(app, resources={
+        r"/*": {
+            "origins": cors_origins,
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True
+        }
+    })
 
     if not socketio.server:
-        socketio.init_app(app,
-            cors_allowed_origins=cors_origins,
-            async_mode='eventlet'
+            socketio.init_app(
+                app,
+                cors_allowed_origins=cors_origins,
+                async_mode='eventlet',
+                ping_timeout=60,
+                ping_interval=25,
+                path='/socket.io',
+                always_connect=True,
+                logger=True,
+                engineio_logger=True
             )
 
     @app.teardown_appcontext

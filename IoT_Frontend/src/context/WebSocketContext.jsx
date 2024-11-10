@@ -9,13 +9,14 @@ const getSocketConfig = () => {
   const URL = config.wsUrl;
 
   const socketOptions = {
-    path: '',
+    path: '/socket.io',
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
     timeout: 20000,
     transports: ['websocket', 'polling'],
+    withCredentials: true,
   };
 
   if (process.env.NODE_ENV === 'production') {

@@ -22,6 +22,7 @@ class BaseConfig:
     MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER')
     NOTIFICATION_EMAIL = os.getenv('NOTIFICATION_EMAIL')
     MAIL_SUPPRESS_SEND = False  # Default to allowing email sending
+    SOCKET_PATH = '/socket.io'
 
 class DevelopmentSessionConfig(BaseConfig):
     DEBUG = True

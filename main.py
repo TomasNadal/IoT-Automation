@@ -59,16 +59,22 @@ def home():
     return "IoT Backend is running!"
 
 if __name__ == '__main__':
-    port = int(os.getenv('PORT', 5000))
-    
-    if os.getenv('FLASK_ENV') == 'production':
-        host = '0.0.0.0'
-        debug = False
-    else:
-        host = '127.0.0.1'
-        debug = True
+    # Determinar configuración basada en entorno
+    env_prefix = 'production' if os.getenv('FLASK_ENV') == 'production' else 'development'
+    logger.info(f"Starting application in {env_prefix} mode")
 
-    logger.info(f"Starting app on {host}:{port} with debug={debug}")
+    # Create session app
+    session_app = create_and_configure_app(f'{env_prefix}_session')
+
+    if session_app is None:
+        logger.error("Failed to create session app")
+        sys.exit(1)
+
+    port = int(os.getenv('PORT', 5000))
+    host = '0.0.0.0' if os.getenv('FLASK_ENV') == 'production' else '127.0.0.1'
+    debug = os.getenv('FLASK_ENV') != 'production'
+
+    logger.info(f"Starting server on {host}:{port} (debug={debug})")
     
     try:
         socketio.run(
@@ -76,9 +82,9 @@ if __name__ == '__main__':
             host=host,
             port=port,
             debug=debug,
-            log_output=True,  # Habilita logging de socketio
-            use_reloader=False  # Deshabilita el reloader en producción
+            use_reloader=False,  # Deshabilitar reloader para evitar problemas con eventlet
+            log_output=True
         )
     except Exception as e:
-        logger.error(f"Error running app: {str(e)}", exc_info=True)
+        logger.error(f"Error starting server: {e}", exc_info=True)
         sys.exit(1)
