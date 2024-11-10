@@ -6,7 +6,7 @@ import axios from 'axios';
 import { DataContext } from '../../context/DataContext';
 import ConfiguracionControlador from '../../components/ConfiguracionControlador';
 import Header from "../../components/Header";
-import config from '../../config/config';
+import urlConfig from '../../config/config';
 
 const AddControllerPage = () => {
   const theme = useTheme();
@@ -51,7 +51,7 @@ const AddControllerPage = () => {
   
     try {
       const response = await axios.post(
-        `${config.apiUrl}/front/dashboard/controlador`,
+        `${urlConfig.apiUrl}/front/dashboard/controlador`,
         {
           name,
           id,
