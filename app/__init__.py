@@ -20,14 +20,13 @@ def create_app(config_name):
     db.init_app(app)
 
     
+    # Clean and validate CORS origins
     cors_origins = []
     for origin in app.config['CORS_ORIGINS']:
-        if isinstance(origin, list):  # Si es una lista (de ADDITIONAL_FRONTEND_URLS)
-            cors_origins.extend([url.strip() for url in origin if url.strip()])
-        elif isinstance(origin, str) and origin.strip():
+        if isinstance(origin, str) and origin.strip():
             cors_origins.append(origin.strip())
     
-    # Configurar CORS con las origins filtradas
+    # Configure CORS
     CORS(app, resources={
         r"/*": {
             "origins": cors_origins,

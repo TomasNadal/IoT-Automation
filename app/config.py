@@ -12,7 +12,12 @@ class BaseConfig:
     LOGGING_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     LOGGING_LOCATION = 'app.log'
     LOGGING_LEVEL = logging.DEBUG
-    CORS_ORIGINS = [os.getenv('FRONTEND_URL', 'http://localhost:5173')]
+       # Updated CORS configuration to include both development and production URLs
+    CORS_ORIGINS = [
+        'http://localhost:5173',  # Development
+        'https://iot-automation.pages.dev',  # Production
+        os.getenv('FRONTEND_URL', ''),  # From environment
+    ]
     # Email configuration base settings
     MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
     MAIL_PORT = int(os.getenv('MAIL_PORT', 587))
