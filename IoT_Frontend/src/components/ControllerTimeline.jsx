@@ -5,6 +5,7 @@ import { tokens } from '../theme';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import axios from 'axios';
 import LoadingScreen from './LoadingScreen';
+import config from '../config/config';
 
 const ControllerTimeline = ({ controllerId }) => {
   const theme = useTheme();
@@ -17,11 +18,7 @@ const ControllerTimeline = ({ controllerId }) => {
   useEffect(() => {
     const fetchTimelineData = async () => {
       try {
-        const response = await axios.get(`https://calm-awfully-shrew.ngrok-free.app//front/controlador/${controllerId}/timeline`,{
-          headers: {
-            'ngrok-skip-browser-warning': 'true'
-          }
-        });
+        const response = await axios.get(`${config.apiUrl}/front/controlador/${controllerId}/timeline`);
         setSensorConfig(response.data.sensor_config);
         const processedData = processTimelineData(response.data.timeline, response.data.sensor_config);
         setTimelineData(processedData);

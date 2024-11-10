@@ -42,11 +42,7 @@ const EnhancedDashboardOverview = () => {
             params: {
               // Get recent logs, for example last 5 minutes
               limit: 100
-            },
-            headers: {
-              'ngrok-skip-browser-warning': 'true'
-            }
-          })
+            }})
         );
         
         const responses = await Promise.all(alertLogPromises);
@@ -110,11 +106,7 @@ const EnhancedDashboardOverview = () => {
     const fetchAllRecentChanges = async () => {
       try {
         const changesPromises = controladores.map(controlador => 
-          axios.get(`${config.apiUrl}/front/controlador/${controlador.id}/changes`, {
-            headers: {
-              'ngrok-skip-browser-warning': 'true'
-            }
-          })
+          axios.get(`${config.apiUrl}/front/controlador/${controlador.id}/changes`)
         );
         const responses = await Promise.all(changesPromises);
         
