@@ -16,6 +16,21 @@ from ..services.service_analytics import CycleAnalyticsService
 dashboard = Blueprint('dashboard', __name__)
 CORS(dashboard)
 
+@dashboard.after_request
+def after_request(response):
+    allowed_origins = [
+        'http://localhost:5173',
+        'https://iot-automation.pages.dev'
+    ]
+    origin = request.headers.get('Origin')
+    if origin in allowed_origins:
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
+
+
 logger = logging.getLogger(__name__)
 def handle_database_error(e):
     logger.error(f"Database error: {str(e)}")
