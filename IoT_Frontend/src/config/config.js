@@ -6,7 +6,7 @@ const config = {
   },
   production: {
     apiUrl: import.meta.env.VITE_API_URL,
-    // Asegúrate de que la URL comience con wss:// para producción
+    // Ensure WebSocket URL uses wss:// for secure connections in production
     wsUrl: import.meta.env.VITE_WS_URL?.startsWith('wss://') 
       ? import.meta.env.VITE_WS_URL 
       : `wss://${import.meta.env.VITE_WS_URL}`,

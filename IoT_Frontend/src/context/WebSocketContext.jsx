@@ -5,9 +5,8 @@ import config from '../config/config';
 
 // Socket Configuration
 const getSocketConfig = () => {
-  // Por esto:
   const URL = config.wsUrl;
-
+  
   const socketOptions = {
     path: '/socket.io',
     reconnection: true,
@@ -17,12 +16,8 @@ const getSocketConfig = () => {
     timeout: 20000,
     transports: ['websocket', 'polling'],
     withCredentials: true,
+    autoConnect: true,
   };
-
-  if (process.env.NODE_ENV === 'production') {
-    socketOptions.cert = process.env.REACT_APP_SSL_CERT;
-    socketOptions.key = process.env.REACT_APP_SSL_KEY;
-  }
 
   return { URL, socketOptions };
 };

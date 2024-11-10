@@ -20,34 +20,33 @@ def create_app(config_name):
     db.init_app(app)
 
     
-    # Clean and validate CORS origins
-    cors_origins = []
-    for origin in app.config['CORS_ORIGINS']:
-        if isinstance(origin, str) and origin.strip():
-            cors_origins.append(origin.strip())
+    # Define allowed origins
+    allowed_origins = [
+        'http://localhost:5173',
+        'https://iot-automation.pages.dev',
+    ]
+    if app.config.get('FRONTEND_URL'):
+        allowed_origins.append(app.config['FRONTEND_URL'])
     
-    # Configure CORS
-    CORS(app, resources={
-        r"/*": {
-            "origins": cors_origins,
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"],
-            "supports_credentials": True
-        }
-    })
+    # Remove any empty strings and duplicates
+    allowed_origins = list(set(filter(None, allowed_origins)))
 
+    # Initialize Socket.IO
     if not socketio.server:
-            socketio.init_app(
-                app,
-                cors_allowed_origins=cors_origins,
-                async_mode='eventlet',
-                ping_timeout=60,
-                ping_interval=25,
-                path='/socket.io',
-                always_connect=True,
-                logger=True,
-                engineio_logger=True
-            )
+        # Update Socket.IO CORS settings
+        socketio.cors_allowed_origins = allowed_origins
+        
+        socketio.init_app(
+            app,
+            cors_allowed_origins=allowed_origins,
+            async_mode='eventlet',
+            ping_timeout=60,
+            ping_interval=25,
+            path='/socket.io',
+            always_connect=True,
+            logger=True,
+            engineio_logger=True
+        )
 
     @app.teardown_appcontext
     def shutdown_session(exception=None):

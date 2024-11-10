@@ -9,31 +9,34 @@ from .extensions import socketio
 logger = logging.getLogger(__name__)
 
 
+@socketio.on_error_default
+def default_error_handler(e):
+    logger.error(f"Socket.IO error: {str(e)}")
+
 @socketio.on('connect')
-def handle_connect(auth):
-    """
-    Handle client connection
-    auth: Authentication data (if any) sent by the client
-    """
+def handle_connect():
+    """Handle client connection"""
     try:
         sid = request.sid
-        logger.info(f"Client connected: {sid}")
+        origin = request.headers.get('Origin', 'Unknown')
+        logger.info(f"Client attempting to connect - SID: {sid}, Origin: {origin}")
         
         # Log connection details
         environ = request.environ
         transport = environ.get('wsgi.url_scheme', 'unknown')
         
-        logger.info(f"Connection details - SID: {sid}, Transport: {transport}")
+        logger.info(f"Connection details - SID: {sid}, Transport: {transport}, Origin: {origin}")
         logger.info(f"Total clients: {len(socketio.server.eio.sockets)}")
         
-        # Send connection confirmation to client
+        # Send connection confirmation
         emit('connection_response', {
             'data': 'Connected successfully!',
             'sid': sid
         })
+        
+        logger.info(f"Client connected successfully - SID: {sid}")
     except Exception as e:
         logger.error(f"Error in handle_connect: {str(e)}")
-        # Even if we have an error in logging, we don't want to break the connection
 
 @socketio.on('disconnect')
 def handle_disconnect():
