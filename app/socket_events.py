@@ -13,20 +13,19 @@ logger = logging.getLogger(__name__)
 def default_error_handler(e):
     logger.error(f"Socket.IO error: {str(e)}")
 
+logger = logging.getLogger(__name__)
+
 @socketio.on('connect')
 def handle_connect():
     """Handle client connection"""
     try:
         sid = request.sid
         origin = request.headers.get('Origin', 'Unknown')
-        logger.info(f"Client attempting to connect - SID: {sid}, Origin: {origin}")
+        logger.info(f"Client connecting - SID: {sid}, Origin: {origin}")
         
         # Log connection details
         environ = request.environ
         transport = environ.get('wsgi.url_scheme', 'unknown')
-        
-        logger.info(f"Connection details - SID: {sid}, Transport: {transport}, Origin: {origin}")
-        logger.info(f"Total clients: {len(socketio.server.eio.sockets)}")
         
         # Send connection confirmation
         emit('connection_response', {
@@ -36,22 +35,22 @@ def handle_connect():
         
         logger.info(f"Client connected successfully - SID: {sid}")
     except Exception as e:
-        logger.error(f"Error in handle_connect: {str(e)}")
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    """Handle client disconnection"""
-    try:
-        sid = request.sid
-        logger.info(f"Client disconnected: {sid}")
-        logger.info(f"Remaining clients: {len(socketio.server.eio.sockets)}")
-    except Exception as e:
-        logger.error(f"Error in handle_disconnect: {str(e)}")
+        logger.error(f"Error in handle_connect: {str(e)}", exc_info=True)
 
 @socketio.on('message')
 def handle_message(message):
-    logger.info(f"Received message: {message}")
-    emit('response', {'data': 'Message received!'})
+    try:
+        logger.info(f"Received message from {request.sid}")
+        emit('response', {'data': 'Message received!'})
+    except Exception as e:
+        logger.error(f"Error handling message: {str(e)}", exc_info=True)
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    try:
+        logger.info(f"Client disconnected: {request.sid}")
+    except Exception as e:
+        logger.error(f"Error in disconnect handler: {str(e)}", exc_info=True)
 
 @socketio.on('my_broadcast_event')
 def handle_my_broadcast_event(message):
