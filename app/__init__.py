@@ -1,4 +1,4 @@
-from flask import Flask, g, jsonify, request
+from flask import Flask, g, jsonify, r
 from flask_cors import CORS
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
