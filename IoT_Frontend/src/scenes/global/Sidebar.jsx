@@ -14,7 +14,7 @@ const Item = ({ title, to, icon, selected, setSelected }) => {
   const colors = tokens(theme.palette.mode);
   
   return (
-    <Link to={to} style={{ textDecoration: 'none' }}>
+    
       <MenuItem
         active={selected === title}
         style={{
@@ -23,9 +23,11 @@ const Item = ({ title, to, icon, selected, setSelected }) => {
         onClick={() => setSelected(title)}
         icon={icon}
       >
+        <Link to={to} style={{ textDecoration: 'none' }}>
         <Typography>{title}</Typography>
+        </Link>
       </MenuItem>
-    </Link>
+    
   );
 };
 
