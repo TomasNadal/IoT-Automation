@@ -60,19 +60,15 @@ def home():
 
 if __name__ == '__main__':
     # Determinar configuración basada en entorno
-    env_prefix = 'production' if os.getenv('FLASK_ENV') == 'production' else 'development'
-    logger.info(f"Starting application in {env_prefix} mode")
-
-    # Create session app
-    session_app = create_and_configure_app(f'{env_prefix}_session')
-
-    if session_app is None:
-        logger.error("Failed to create session app")
-        sys.exit(1)
-
     port = int(os.getenv('PORT', 5000))
-    host = '0.0.0.0' if os.getenv('FLASK_ENV') == 'production' else '127.0.0.1'
-    debug = os.getenv('FLASK_ENV') != 'production'
+    
+    if os.getenv('FLASK_ENV') == 'production':
+        host = '0.0.0.0'
+        debug = False
+    else:
+        host = '127.0.0.1'
+        debug = True
+
 
     logger.info(f"Starting server on {host}:{port} (debug={debug})")
     
