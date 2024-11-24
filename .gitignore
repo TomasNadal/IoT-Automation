@@ -5,7 +5,6 @@ out/
 # Ignores development broadcast logs
 
 # Docs
-docs/
 generate_sample_entries.py
 
 # Node modules

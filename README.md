@@ -2,40 +2,52 @@
 
 ## Overview
 
-This IoT Sensor Monitoring Platform is a personal project in development, designed to receive and display data from Arduino-based sensors. The primary goal is to create a system that can monitor the state of various sensors and present this information to users in a clear, intuitive manner.
+This IoT Sensor Monitoring Platform is a personal project in development, born from a real business need to monitor industrial machinery status. Built with Arduino/ESP32 modules for data collection, the platform receives, processes, and displays sensor data through an intuitive web interface. While currently an MVP, the project aims to demonstrate robust architecture principles and scalable design patterns.
 
 ## Project Objectives
 
-- Receive real-time data from Arduino devices monitoring different sensors
-- Store sensor data efficiently for historical analysis
-- Display current sensor states and historical data through a user-friendly web interface
-- Provide alerts for significant sensor state changes
-- Build a robust foundation to scale
+- Receive real-time data from Arduino/ESP32 devices connected to industrial machinery
+- Store sensor data efficiently for historical analysis and trend detection
+- Display current machine states and historical data through a responsive web interface
+- Provide configurable alerts for critical state changes
+- Build a scalable and secure foundation for future expansion
+
+## Hardware Integration
+
+Our solution includes custom-built sensor modules using Arduino and ESP32:
+
+<img src="docs/images/arduino_conectado.jpg" width="25%" alt="Connected Arduino Module">
+<img src="docs/images/imagen_arduino.jpg" width="25%" alt="Arduino Module Close-up">
+
+The modules are designed to:
+- Connect directly to industrial machinery
+- Collect various sensor data (temperature, pressure, status, etc.)
+- Transmit data securely to our platform
 
 ## Current Features
 
-- **Data Ingestion**: API endpoint to receive sensor data from Arduino devices
-- **Data Storage**: PostgreSQL database with TimescaleDB for efficient time-series data handling
-- **React Web Interface**: Simple dashboard in development to view current sensor states
-- **Real-time Updates**: WebSocket integration for live data updates
+- **Data Ingestion**: Secure API endpoint for Arduino/ESP32 sensor data
+- **Data Storage**: PostgreSQL with TimescaleDB for efficient time-series data handling
+- **React Web Interface**: Real-time dashboard for monitoring machine states
+- **Live Updates**: WebSocket integration for immediate data reflection
+- **Historical Analysis**: Time-series data visualization and basic trending
 
 ## Tech Stack
 
-- **Backend**: Python, Flask, SQLAlchemy
-- **Frontend**: React (basic implementation)
-- **Database**: PostgreSQL with TimescaleDB extension
-- **Real-time Communication**: Flask-SocketIO
+### Backend
+- **Framework**: Python/Flask
+- **ORM**: SQLAlchemy
+- **Database**: PostgreSQL with TimescaleDB
+- **Real-time**: Flask-SocketIO
 
-## Project Status
-
-This project is still in active development. Many features are experimental and may change. Current focus areas include:
-
-- Improving data visualization
-- Enhancing the reliability of the Arduino data ingestion process
-- Implementing a more robust alert system
-- Expanding the frontend functionality (JWT, data-visualization, etc.)
+### Frontend
+- **Framework**: React
+- **State Management**: Context API
+- **Data Visualization**: Recharts
+- **Styling**: Tailwind CSS
 
 ## Project Structure
+```
 IoT-Automation/
 ├── flask_app/                  # Backend Flask application
 │   ├── api/
@@ -49,30 +61,31 @@ IoT-Automation/
 │       ├── components/
 │       ├── scenes/
 │       └── App.jsx
-└── README.md                   # Project documentation
+└── docs/
+    └── images/                 # Project documentation images
+```
 
+## Project Status
 
-## Getting Started
+This MVP is in active development. Current focus areas include:
+- Enhancing data visualization capabilities
+- Implementing robust error handling for device communication
+- Developing a comprehensive alert system
+- Expanding frontend functionality (JWT authentication, advanced visualizations)
+- Improving system architecture using Domain-Driven Design principles
 
-1. Clone the repository
-2. Set up the backend:
-  cd flask_app
-  pip install -r requirements.txt
-  flask db upgrade
-  flask run
+## Future Enhancements
 
-3. Set up the frontend:
-  cd react_frontend
-  npm install
-  npm start
-
-4. Navigate to `http://localhost:3000` in your browser
-
+- Advanced anomaly detection
+- Machine learning for predictive maintenance
+- Mobile application for alerts
+- Enhanced security features
+- Multi-tenant support
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+The project is currently in MVP phase. For contribution inquiries, please contact the repository owner.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+This project is licensed under the MIT License.
